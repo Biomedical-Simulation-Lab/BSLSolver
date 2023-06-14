@@ -7,7 +7,7 @@ setup(
     version = '0.1',
     packages = ['BSLSolver',
                 'BSLSolver.common',
-                'BSLSolver.problems',
+                'BSLSolver.example',
                 'BSLSolver.Post',
                 ],
    entry_points = {
