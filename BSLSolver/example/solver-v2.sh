@@ -66,6 +66,8 @@ echo "Finished naming"
 ##############################################
 #set a variable that gives the number of saves per cycle
 uco=$(( $timesteps_per_cycle / $save_frequency))
+#acs is the total number of saves we are expecting to see, which includes all the cycles we wanted to print
+acs = $(($timesteps_per_cycle / $save_frequency)*($cycles-1))
 
 #check if we want to clean up old stuff
 if [ $clean == "Yes" ]; then
@@ -84,8 +86,6 @@ if [ $restart_no_given -lt 0 ]; then
   uc=\$(ls -1 \$results_folder/*_up.h5 2>/dev/null | wc -l)
   #checks to see if the number of saves (uc) is the same as the number of expected saves per cycle (uco). I changed this - AH.
   #OLD: if [ \$uco -eq \$uc ]; then
-  #acs is the total number of saves we are expecting to see, which includes all the cycles we wanted to print
-  acs = $(($timesteps_per_cycle / $save_frequency)*($cycles-1))
   if [ \$acs == \$uc]; then 
     simdone="1"
   fi
@@ -156,17 +156,17 @@ if [ -f \$results_folder/data/\$restart_no/complete ]; then
     echo "Simulation is finished."
     echo "Sleeping for 15 seconds to let the I/O settle down."
     sleep 15
-    uco=\$(( $timesteps_per_cycle / $save_frequency))
+    #uco=\$(( $timesteps_per_cycle / $save_frequency))
     uc=\$(ls -1 \$results_folder/*_up.h5 2>/dev/null | wc -l)
-    if [ \$uco -ne \$uc ]; then
-      echo "<!> No enough outputs found! Expecting " \$uco "files but found " \$uco " files!"
+    if [ \$acs -ne \$uc ]; then
+      echo "<!> Not enough outputs found! Expecting " \$acs "files but found " \$uc " files!"
       echo "What to do: inspect everything first. ONLY, if there was an IO issue:"
       echo "1) Try removing file:" \$results_folder/data/\$restart_no/complete
       echo "2) Re-run this script: bash \$0"
     else
       echo "Submitting post-processing jobs for:" \$casename " stored at " \$results_folder
       wc=\$(ls -1 \$results_folder/wss_files/*_wss.h5 2>/dev/null | wc -l)
-      if [ \$uco -ne \$wc ]; then
+      if [ \$acs -ne \$wc ]; then
         echo "Submitting wss calculations job for:" \$casename " stored at " \$results_folder
         out=\$((ssh nia-login01 "cd \$SLURM_SUBMIT_DIR; python \$SOLVER_HOME/BSLSolver/Post/wss_run_me.py \$results_folder -t $post_processing_time_minutes")  2>&1)
         echo "\$out"
