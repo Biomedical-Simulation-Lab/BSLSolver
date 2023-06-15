@@ -10,8 +10,6 @@ README for the new BSL Solver
 
 The environment must be created as follows on the Niagara login node:
 
-|||||||||||||shell script||||||||||||||
-
 cd ~
 
 module load NiaEnv/.2020a intel/2020u1 intelmpi/2020u1 intelpython3/2020u1 cmake/3.16.3 boost/1.69.0 eigen/3.3.7 hdf5/1.8.21 netcdf/4.6.3 gmp/6.2.0 mpfr/4.0.2 swig/4.0.1 petsc/3.10.5 trilinos/12.12.1 fenics/2019.1.0
@@ -46,13 +44,9 @@ python -m pip install -e .
 
 conda install scipy -y
 
-You can add the environment you just made (oasis) to the input file with:
-
-"solver_env_name=oasis"
-
 2) You will need to have a local dijitso cache in your scratch directory, because you can't write to your dijitso cache in your home directory (as you could locally). To do this, you will need to copy dijitso:
 
-cp $HOME/.cache/dijitso $SCRATCH/.cache/
+cp -r $HOME/.cache/dijitso $SCRATCH/.cache/
 
 In your ~/.bashrc, add the following lines:
 
@@ -68,7 +62,7 @@ export INSTANT_ERROR_DIR=/scratch/s/steinman/[YOUR USERNAME HERE]/.local/instant
 
 Artery.py
 
-in_default.sh (change the name of this file)
+in_default.sh (change the name of this file. in the example folder it is called c0003_ICA_T.sh)
 
 solver-v2.sh
 
