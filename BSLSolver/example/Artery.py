@@ -251,7 +251,7 @@ def problem_parameters(commandline_kwargs, NS_parameters, **NS_namespace):
             velocity_degree = get_cmdarg(commandline_kwargs, 'uOrder', 1),
             folder = "./results/" + case_fullname,
             save_step = get_cmdarg(commandline_kwargs, 'save_step', 100000), #Mehdi doesn't use the oasis output
-            checkpoint = get_cmdarg(commandline_kwargs, 'checkpoint', 500000),
+            checkpoint = get_cmdarg(commandline_kwargs, 'checkpoint', 500),
             no_of_cycles = get_cmdarg(commandline_kwargs, 'cycles', 2),
             mesh_path = mesh_path, # commandline_kwargs["mesh_path"],
             id_in = id_in,
