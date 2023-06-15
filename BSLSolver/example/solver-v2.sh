@@ -109,7 +109,7 @@ echo "Results folder: " \$results_folder
 echo "Log File: " \$log_file
 echo "Restart Number: " \$(( \$restart_no+1 ))
 restart_folder=\${results_folder}/data/\${restart_no}/Checkpoint #this is not accurate for new oasis restart_folder=\$restart_folder
-mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle cycles=$cycles save_frequency=$save_frequency mesh_name=$casename &>> \$log_file
+#mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle cycles=$cycles save_frequency=$save_frequency mesh_name=$casename &>> \$log_file
 
 if [ \$simdone == "0" ]; then
   if [ \$restart_no -gt 0 ]; then
