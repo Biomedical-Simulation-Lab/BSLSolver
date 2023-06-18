@@ -54,8 +54,8 @@ def read_h5_files(ids, h5_files, _wss_1, _wss_2, _wss_3, _wss_abs):
         print ('    reading', len(ids), 'files:', ids, h5_files[ids[0]], ' ... ',  h5_files[ids[-1]])
     for i in ids:
         hw = h5py.File(h5_files[i], 'r')
-        ls = numpy.asarray(hw['Computed/wss'])
-        la = numpy.asarray(hw['Computed/wss_abs'])
+        ls = numpy.asarray(hw['wss']) #changed this AH
+        la = numpy.asarray(hw['wss_abs'])
         for j in range(ls.shape[0]):
             wss_1[j][i] = ls[j][0]
             wss_2[j][i] = ls[j][1]
@@ -187,9 +187,11 @@ def hemodynamics(input_folder, interval, nproc, period, ascii=False):
     timesteps = int(folder_itself.split("_ts")[-1].split("_cy")[0])
 
     mesh_filename, case_folder, case_name = job_utils.get_case_mesh_filename(input_folder)
-    print ('Looking for mesh file:', mesh_filename, ' and loading wall normal vectors (/Mesh/Wall/normal).')
+    # need to overwrite the filename here
+    mesh_filename = case_folder + '/wss_mesh.h5'
+    print ('Looking for mesh file:', mesh_filename, ' and loading wall normal vectors (/Mesh/normal).')
     mesh = h5py.File(mesh_filename, 'r')
-    normals = numpy.asarray(mesh['/Mesh/Wall/normal'])
+    normals = numpy.asarray(mesh['/Mesh/normal'])
     number_of_points = normals.shape[0]
 
     print ('Looking at', input_folder+'/wss_files', '...')

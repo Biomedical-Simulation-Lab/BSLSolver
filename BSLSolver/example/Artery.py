@@ -29,6 +29,7 @@ from BSLSolver.common import Womersley
 #import CustomFunction
 #import naming
 import os #, h5io
+from BSLSolver.common import WSS
 
 #///////////////////////////////////////////////////////////////
 # MPI node identification and size
@@ -252,6 +253,7 @@ def problem_parameters(commandline_kwargs, NS_parameters, **NS_namespace):
             folder = "./results/" + case_fullname,
             save_step = get_cmdarg(commandline_kwargs, 'save_step', 100000), #Mehdi doesn't use the oasis output
             checkpoint = get_cmdarg(commandline_kwargs, 'checkpoint', 500),
+            print_WSS = get_cmdarg(commandline_kwargs, 'print_WSS', True),
             no_of_cycles = get_cmdarg(commandline_kwargs, 'cycles', 2),
             mesh_path = mesh_path, # commandline_kwargs["mesh_path"],
             id_in = id_in,
@@ -568,8 +570,8 @@ def beta(err, p):
 def w(P):
     return 1.0 / ( 1.0 + 20.0*abs(P))
 #///////////////////////////////////////////////////////////////
-def temporal_hook(u_, p_, p, q_, mesh, tstep, compute_flux,
-                  dump_stats, newfolder, id_in, files, id_out, inout_area,
+def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
+                  dump_stats, newfolder, id_in, files, id_out, inout_area, subdomain_data,
                   normals, store_data, hdf5_link, NS_expressions, current_cycle,
                   total_cycles, area_ratio, t, dS, timestep_cpu_time, current_time, 
                   cpu_time, final_time, timesteps, not_zero_pressure_outlets, **NS_namespace):
@@ -578,6 +580,8 @@ def temporal_hook(u_, p_, p, q_, mesh, tstep, compute_flux,
     current_cycle = int(tstep / timesteps)
     if mpi_rank == 0:
         print ('cycle:', current_cycle, 'tstep', tstep , ' timesteps', timesteps)
+
+    fd = subdomain_data
 
     # Update boundary condition
     for inlet in NS_expressions["inlet"]:
@@ -676,6 +680,8 @@ def temporal_hook(u_, p_, p, q_, mesh, tstep, compute_flux,
     if (current_cycle > 0) and (current_cycle <= total_cycles-1):
         if tstep % store_data == 0:	
             h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_, int(MPI.comm_world.local_range()) ) #multiple nodes?
+            if NS_parameters['print_WSS']:
+                WSS.compute_wall_shear_stress(mesh, u_, NS_parameters['nu'], fd, NS_parameters['folder'], t, tstep, current_cycle, NS_parameters['case_fullname'])
             if mpi_rank == 0:
                 h5stdio.SaveXDMF( os.path.join(NS_parameters['folder'], NS_parameters['case_fullname']+'.xdmf') )
 
