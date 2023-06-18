@@ -55,7 +55,7 @@ class STRESS:
         self.Ftv = Function(vector)
 
         # 1 / (2 * scaling) *
-        self.Ltv = inner(w, Ft) * boundary_ds #L2 projection of DG0 stress (Ft) onto a CG1 mesh
+        self.Ltv = (1/2)*inner(w, Ft) * boundary_ds #L2 projection of DG0 stress (Ft) onto a CG1 mesh
 
     def call(self):
         """
