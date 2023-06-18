@@ -96,7 +96,7 @@ class STRESS:
 #STILL REQUIRES TESTING, but should be ok
 def compute_wall_shear_stress(mesh, u_, nu, fd, results_folder, t, tstep, current_cycle, case_fullname):
     mu = nu*1057 #get dynamic viscosity using rho=1057
-    case_fullname = NS_parameters['case_fullname']
+    case_fullname = case_fullname
     filepath = results_folder+'/wss_files/'+case_fullname+'_curcyc_%%d_t=%%0%d.4f_ts=%%0%dd_wss.h5'%(current_cycle, t, tstep)
     #Calculate stress
     tau, tau_abs, bmesh = STRESS(u_, 0.0, mu, mesh, fd)

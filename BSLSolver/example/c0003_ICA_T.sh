@@ -33,6 +33,7 @@ set +a
 #include_gravitational_effects=False #default False
 #flat_profile_at_inlet_bc=False #default False
 #maxwtime=(23*60*60) #default (23*60*60)
+#print_WSS = True #default is True
 
 ###IF YOU WANT THE NORMAL OASIS OUTPUT, IT IS NORMALLY SUPPRESSED!!###
 #You can get the normal output if you add the following to your variables list
