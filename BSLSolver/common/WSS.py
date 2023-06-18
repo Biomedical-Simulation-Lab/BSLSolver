@@ -92,7 +92,7 @@ class STRESS:
 
         return sym(grad(self.u))
 
-#compute the wall shear stress on the boundary using the vector u_
+#compute the wall shear stress on the wall boundary using the vector u_
 #STILL REQUIRES TESTING, but should be ok
 def compute_wall_shear_stress(mesh, u_, nu, fd, results_folder, t, tstep, current_cycle, case_fullname):
     mu = nu*1057 #get dynamic viscosity using rho=1057
@@ -107,8 +107,7 @@ def compute_wall_shear_stress(mesh, u_, nu, fd, results_folder, t, tstep, curren
         fmesh.write(bmesh, '/Mesh')
         normals = FacetNormal(bmesh)
         fmesh.write(normals, '/Mesh/normal')
-    f = XDMFFile(filepath)
-    f.parameters['rewrite_function_mesh'] = False #don't need the mesh
-    f.write(tau, t)
-    f.write(tau_abs, t)
+    f = HDF5File(bmesh.mpi_comm(), filepath, 'w')
+    f.write(tau, 'wss')
+    f.write(tau_abs, 'wss_abs')
     
