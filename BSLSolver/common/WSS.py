@@ -103,7 +103,7 @@ def compute_wall_shear_stress(mesh, u_, nu, fd, results_folder, t, tstep, curren
     #Print to file
     meshpath = results_folder + '/wss_mesh.h5'
     if not meshpath.exists():
-        fmesh = HDF5File(m.mpi_comm(), meshpath, 'w')
+        fmesh = HDF5File(bmesh.mpi_comm(), meshpath, 'w')
         fmesh.write(bmesh, '/Mesh')
         normals = FacetNormal(bmesh)
         fmesh.write(normals, '/Mesh/normal')
