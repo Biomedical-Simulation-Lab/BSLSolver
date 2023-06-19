@@ -367,12 +367,12 @@ def post_import_problem(NS_parameters, mesh, commandline_kwargs,
 
     # If the mesh is a callable function, then create the mesh here.
     if callable(mesh):
-        mesh, dS, fd, nors, dim, inout_area, bmesh = mesh(**NS_parameters)
+        mesh, dS, fd, nors, dim, inout_area= mesh(**NS_parameters)
 
     assert(isinstance(mesh, Mesh))
 
     # Returned dictionary to be updated in the NS namespace
-    d = dict(mesh=mesh, dS=dS, subdomain_data=fd, normals=nors, dim=dim, inout_area=inout_area, bmesh = bmesh)
+    d = dict(mesh=mesh, dS=dS, subdomain_data=fd, normals=nors, dim=dim, inout_area=inout_area)
     d.update(NS_parameters)
     d.update(NS_expressions)
     return d
