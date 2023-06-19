@@ -29,7 +29,7 @@ from BSLSolver.common import Womersley
 #import CustomFunction
 #import naming
 import os #, h5io
-from BSLSolver.common import WSS
+#from BSLSolver.common import WSS #only works in serial
 
 #///////////////////////////////////////////////////////////////
 # MPI node identification and size
@@ -253,7 +253,7 @@ def problem_parameters(commandline_kwargs, NS_parameters, **NS_namespace):
             folder = "./results/" + case_fullname,
             save_step = get_cmdarg(commandline_kwargs, 'save_step', 100000), #Mehdi doesn't use the oasis output
             checkpoint = get_cmdarg(commandline_kwargs, 'checkpoint', 500),
-            print_WSS = get_cmdarg(commandline_kwargs, 'print_WSS', True),
+            #print_WSS = get_cmdarg(commandline_kwargs, 'print_WSS', True),
             no_of_cycles = get_cmdarg(commandline_kwargs, 'cycles', 2),
             mesh_path = mesh_path, # commandline_kwargs["mesh_path"],
             id_in = id_in,
@@ -347,36 +347,11 @@ def mesh(mesh_path, **NS_namespace):
     Hdf.write(m, '/Mesh')
     Hdf.close()
 
-    ## Output the WSS mesh
-    meshpath = NS_namespace['folder'] + '/wss_mesh.h5' 
-    if not path.exists(meshpath):
-        boundarymesh = BoundaryMesh(m, 'exterior')
-        #have to map the fd MeshFunction that is defined on the mesh to the external boundary mesh
-        bdim = boundarymesh.topology().dim()
-        boundary_boundaries = MeshFunction('size_t', boundarymesh, bdim)
-        boundary_boundaries.set_all(0)
-        for i, facet in enumerate(entities(boundarymesh, bdim)): #go through all facets in the boundarymesh
-            parent_meshentity = boundarymesh.entity_map(bdim)[i] #gives the index of the boundary facet in the parent mesh
-            parent_boundarynumber = fd.array()[parent_meshentity] #search for the facet mesh_value_collection in the parent mesh
-            boundary_boundaries.array()[i] = parent_boundarynumber #assigns the facet_mesh_value_collection number to the new MeshFunction 
-        submesh_of_b0= SubMesh(boundarymesh, boundary_boundaries, 0) #fd=0 is the wall, so it should be same in the new submesh
-        #write to file   
-        fmesh = HDF5File(bmesh.mpi_comm(), meshpath, 'w')
-        fmesh.write(bmesh, '/Mesh')
-        normals = FacetNormal(bmesh)
-        fmesh.write(normals, '/Mesh/normal')
-    else:
-        #read in the bmesh
-        meshpath = NS_namespace['folder'] + '/wss_mesh.h5'   
-        f = HDF5File(m.mpi_comm(), meshpath, 'r')
-        submesh_of_b0= Mesh()
-        f.read(submesh_of_b0, 'Mesh')
-
     h5stdio.SetMeshInfo(mesh_h5_filepathname, mesh_h5_filename, num_cells, num_points)
 
     print_section_footer()
 
-    return m, dS, fd, normals, m.geometry().dim(), inout_area, submesh_of_b0
+    return m, dS, fd, normals, m.geometry().dim(), inout_area
 
 #overrides the default
 def post_import_problem(NS_parameters, mesh, commandline_kwargs,
@@ -563,7 +538,7 @@ def get_file_paths(folder):
 
 #///////////////////////////////////////////function////////////////////
 def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
-                   restart_folder, velocity_degree, nu, bmesh,**NS_namespace):
+                   restart_folder, velocity_degree, nu,**NS_namespace):
 
     if restart_folder is None:
         # Get files to store results
@@ -572,15 +547,11 @@ def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
     else:
         files = NS_namespace["files"]
 
-    #initialize the stress class
-    mu = nu*1057 #get dynamic viscosity using rho=1057
-    t = WSS.STRESS(u_, 0.0, mu, mesh, bmesh)
-
     return dict(hdf5_link=h5stdio,
                 files=files, #inout_area=NS_parameters['inout_area'],
                 final_time=NS_namespace['T'], current_cycle=0, 
                 timesteps=NS_namespace['time_steps'], total_cycles=NS_namespace['no_of_cycles'],
-                timestep_cpu_time=0, current_time=time.time(), cpu_time=0, stress = t)
+                timestep_cpu_time=0, current_time=time.time(), cpu_time=0)
 
 #///////////////////////////////////////////////////////////////
 def beta(err, p):
@@ -603,7 +574,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
                   dump_stats, newfolder, id_in, files, id_out, inout_area, subdomain_data,
                   normals, store_data, hdf5_link, NS_expressions, current_cycle,
                   total_cycles, area_ratio, t, dS, timestep_cpu_time, current_time, 
-                  cpu_time, final_time, timesteps, not_zero_pressure_outlets, stress, **NS_namespace):
+                  cpu_time, final_time, timesteps, not_zero_pressure_outlets, **NS_namespace):
 
     # update the current cycles
     current_cycle = int(tstep / timesteps)
@@ -709,8 +680,6 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
     if (current_cycle > 0) and (current_cycle <= total_cycles-1):
         if tstep % store_data == 0:	
             h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_, int(MPI.comm_world.local_range()) ) #multiple nodes?
-            if NS_parameters['print_WSS']:
-                WSS.compute_wall_shear_stress(stress, NS_parameters['folder'], t, tstep, current_cycle, NS_parameters['case_fullname'])
             if mpi_rank == 0:
                 h5stdio.SaveXDMF( os.path.join(NS_parameters['folder'], NS_parameters['case_fullname']+'.xdmf') )
 

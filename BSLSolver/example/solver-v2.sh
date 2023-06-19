@@ -165,4 +165,42 @@ if [ -f \$results_folder/data/\$restart_no/complete ]; then
     fi
 fi
 
+# This is where the postprocessing scripts (wss hemodynamics) is run:
+if [ -f \$results_folder/data/\$restart_no/complete ]; then
+    # simulation is done
+    echo "Simulation is finished."
+    echo "Sleeping for 15 seconds to let the I/O settle down."
+    sleep 15
+    uc=\$(ls -1 \$results_folder/*_up.h5 2>/dev/null | wc -l)
+    if [ \$acs -ne \$uc ]; then
+      echo "<!> No enough outputs found! Expecting " \$acs "files but found " \$uc " files!"
+      echo "What to do: inspect everything first. ONLY, if there was an IO issue:"
+      echo "1) Try removing file:" \$results_folder/data/\$restart_no/complete
+      echo "2) Re-run this script: bash \$0"
+    else
+      echo "Submitting post-processing jobs for:" \$casename " stored at " \$results_folder
+      wc=\$(ls -1 \$results_folder/wss_files/*_wss.h5 2>/dev/null | wc -l)
+      if [ \$acs -ne \$wc ]; then
+        echo "Submitting wss calculations job for:" \$casename " stored at " \$results_folder
+        out=\$((ssh nia-login01 "cd \$SLURM_SUBMIT_DIR; python \$SOLVER_HOME/BSLSolver/Post/wss_run_me.py \$results_folder -t $post_processing_time_minutes")  2>&1)
+        echo "\$out"
+        wss_jid="\${out#*Submitted batch job}";wss_jid=\${wss_jid##* };
+        # echo "<\$wss_jid>  $0 $1 \$SLURM_SUBMIT_DIR"
+        if [ ! -z \$wss_jid ]; then
+          #sleep 5
+          out=\$((ssh nia-login01 "cd \$SLURM_SUBMIT_DIR; printf '#!/bin/bash\nssh nia-login01 \"cd \$SLURM_SUBMIT_DIR; bash $0\"' | sbatch --dependency=afterany:\$wss_jid --time=00:15:00 --mail-type=NONE --nodes=1 --ntasks-per-node=1 --job-name ${jobname}_1 --output=hpclog/art_%x_pstdout_%j.txt") 2>&1)
+          echo "\$out"
+        fi
+      else
+        if [ ! -f \$results_folder/*_hemodynamics_w.tec ] || [ "$force" == "Yes" ]; then
+          echo "Submitting hemodynamic calculations job for:" $casename " stored at " \$results_folder
+          out=\$((ssh nia-login01 "cd \$SLURM_SUBMIT_DIR; python \$SOLVER_HOME/BSLSolver/Post/hemodynamic_indices_run_me.py \$results_folder -t $post_processing_time_minutes") 2>&1)
+          echo "\$out"
+        else
+          echo "Hemodynamics file were previously generated. Nothing to do!"
+        fi
+      fi
+    fi
+fi
+
 EOST

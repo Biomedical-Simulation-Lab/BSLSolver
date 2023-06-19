@@ -4,9 +4,24 @@ from dolfin import assemble, interpolate, Measure, FacetNormal, Identity, Vector
 from BSLSolver.common import h5io
 
 class STRESS:
-    """Computes the stress on a given mesh based on provided velocity and pressure fields. This code is modified from nsbench and VAMPy."""
+    """Computes the stress on a given mesh based on provided velocity and pressure fields. 
+        This code is modified from nsbench and VAMPy.
+        ONLY WORKS IN SERIAL!! This is because the submesh class is not parallel, and even if it were
+        the interpolation onto the mesh has to be done in serial (non-matching mesh partition)!!
+        
+        Initialize with:
+        in pre_solve_hook
+        mu = nu*1057 #get dynamic viscosity using rho=1057
+        t = WSS.STRESS(u_, 0.0, mu, mesh, fd)
 
-    def __init__(self, u, p, mu, mesh, bmesh):
+        Call with:
+        in temporal hook where printing occurs
+        if NS_parameters['print_WSS']:
+                WSS.compute_wall_shear_stress(stress, NS_parameters['folder'], t, tstep, current_cycle, NS_parameters['case_fullname'])
+
+    """
+
+    def __init__(self, u, p, mu, mesh, fd):
         """Initializes the Stress class.
 
         Args:
@@ -17,6 +32,19 @@ class STRESS:
             bmesh (Mesh): The boundary mesh to interpolate to.
         """
         boundary_ds = Measure("ds", domain=mesh)
+        fd = MeshFunction("size_t", m, m.geometry().dim() - 1, m.domains())
+        boundarymesh = BoundaryMesh(m, 'exterior')
+
+        bdim = boundarymesh.topology().dim()
+        boundary_boundaries = MeshFunction('size_t', boundarymesh, bdim)
+        boundary_boundaries.set_all(0)
+        for i, facet in enumerate(entities(boundarymesh, bdim)):
+            parent_meshentity = boundarymesh.entity_map(bdim)[i]
+            parent_boundarynumber = fd.array()[parent_meshentity]
+            boundary_boundaries.array()[i] = parent_boundarynumber
+
+        bmesh= SubMesh(boundarymesh, boundary_boundaries, 0)
+
         self.bmV = VectorFunctionSpace(bmesh, 'CG', 1)
         self.bMesh = bmesh
 
