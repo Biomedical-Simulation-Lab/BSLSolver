@@ -191,7 +191,7 @@ def hemodynamics(input_folder, interval, nproc, period, ascii=False):
     mesh_filename = case_folder + '/wss_mesh.h5'
     print ('Looking for mesh file:', mesh_filename, ' and loading wall normal vectors (/Mesh/normal).')
     mesh = h5py.File(mesh_filename, 'r')
-    normals = numpy.asarray(mesh['/Mesh/normal'])
+    normals = numpy.asarray(mesh['Mesh/normal'])
     number_of_points = normals.shape[0]
 
     print ('Looking at', input_folder+'/wss_files', '...')
@@ -342,8 +342,8 @@ def hemodynamics(input_folder, interval, nproc, period, ascii=False):
     # write the results to output in tecplot format
     output_filename = input_folder+'/'+'%s_hemodynamics_w%s.tec'%(folder_itself, '' if use_half_fft_signal else '_full')
     print ('Writing data to %s ...'%(output_filename), end='')
-    coord = numpy.asarray(mesh['Mesh/Wall/coordinates'])
-    elems = numpy.asarray(mesh['Mesh/Wall/topology'])
+    coord = numpy.asarray(mesh['Mesh/coordinates'])
+    elems = numpy.asarray(mesh['Mesh/topology'])
     outfile = open(output_filename, 'w')
     vars = 'VARIABLES = X,Y,Z,TAWSS,OSI,SPI,SPI_prj,SPI_mehdi,TransWSS,nTransWSS,RRT'
     for bnd in bands: vars += ',SPI_%d_%d'%(bnd[0],bnd[1])
