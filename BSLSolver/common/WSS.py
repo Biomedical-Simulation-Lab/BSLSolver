@@ -14,6 +14,7 @@ class STRESS:
             p (Function): The pressure field.
             mu (float): The dynamic viscosity.
             mesh (Mesh): The mesh on which to compute stress.
+            bmesh (Mesh): The boundary mesh to interpolate to.
         """
         boundary_ds = Measure("ds", domain=mesh)
         self.bmV = VectorFunctionSpace(bmesh, 'CG', 1)
