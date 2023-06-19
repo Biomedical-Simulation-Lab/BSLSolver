@@ -287,7 +287,7 @@ def problem_parameters(commandline_kwargs, NS_parameters, **NS_namespace):
 # Create a mesh
 def mpi_comm():
     return MPI.comm_world
-def mesh(mesh_path, folder, **NS_namespace):
+def mesh(mesh_path, **NS_namespace):
     print_section_header('Loading mesh file: ' + mesh_path)
 
     mesh_folder = mesh_path #path.join(path.dirname(path.abspath(__file__)), mesh_path)
@@ -348,7 +348,7 @@ def mesh(mesh_path, folder, **NS_namespace):
     Hdf.close()
 
     ## Output the WSS mesh
-    meshpath = folder + '/wss_mesh.h5' 
+    meshpath = NS_namespace['folder'] + '/wss_mesh.h5' 
     if not meshpath.exists():
         boundarymesh = BoundaryMesh(m, 'exterior')
         #have to map the fd MeshFunction that is defined on the mesh to the external boundary mesh
@@ -367,7 +367,7 @@ def mesh(mesh_path, folder, **NS_namespace):
         fmesh.write(normals, '/Mesh/normal')
     else:
         #read in the bmesh
-        meshpath = folder + '/wss_mesh.h5'   
+        meshpath = NS_namespace['folder'] + '/wss_mesh.h5'   
         f = HDF5File(m.mpi_comm(), meshpath, 'r')
         submesh_of_b0= Mesh()
         f.read(submesh_of_b0, 'Mesh')
