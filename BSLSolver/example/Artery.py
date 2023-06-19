@@ -349,7 +349,7 @@ def mesh(mesh_path, **NS_namespace):
 
     ## Output the WSS mesh
     meshpath = NS_namespace['folder'] + '/wss_mesh.h5' 
-    if not meshpath.exists():
+    if not path.exists(meshpath):
         boundarymesh = BoundaryMesh(m, 'exterior')
         #have to map the fd MeshFunction that is defined on the mesh to the external boundary mesh
         bdim = boundarymesh.topology().dim()
