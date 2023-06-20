@@ -690,7 +690,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
     #OLD: if current_cycle == total_cycles-1:
     if (current_cycle <= total_cycles-1): #(current_cycle > 0) and 
         if tstep % store_data == 0:	
-            h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_, int(MPI.comm_world.local_range()) ) #multiple nodes?
+            h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_, MPI.comm_world) #multiple nodes?
             #save ftle field
             if NS_parameters['save_ftle']:
                 ftle(mesh, V, u_, bcs['u0'], dt, tstep, ftle_f)
