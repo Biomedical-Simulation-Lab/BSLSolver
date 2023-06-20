@@ -122,7 +122,7 @@ class HDF5StdIO:
                         const std::string attributes, pybind11::dict explicit_attributes, 
                         const std::string dataset_name,
                         dolfin::Function& uf0, dolfin::Function& uf1, dolfin::Function& uf2,
-                        dolfin::Function& pf, MPI::Comm mpi_comm) //const long int mpi_comm)
+                        dolfin::Function& pf, const long int mpi_comm)
             {
                 std::size_t i,j;
                 std::vector<double> uc[3];
