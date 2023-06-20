@@ -688,7 +688,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
 
     # Save velocity and pressure
     #OLD: if current_cycle == total_cycles-1:
-    if (current_cycle > 0) and (current_cycle <= total_cycles-1):
+    if (current_cycle <= total_cycles-1): #(current_cycle > 0) and 
         if tstep % store_data == 0:	
             h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_, int(MPI.comm_world.local_range()) ) #multiple nodes?
             #save ftle field
