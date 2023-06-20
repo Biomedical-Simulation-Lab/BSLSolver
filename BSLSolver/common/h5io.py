@@ -156,7 +156,7 @@ class HDF5StdIO:
                 for (i = 1; i < shape_p.size(); ++i) local_shape_p /= shape_p[i];
 
                 //Get communicator    
-                dolfin::MPI_Comm mpi_comm = pf.function_space()->mesh()->mpi_comm()
+                MPI_Comm mpi_comm = pf.function_space()->mesh()->mpi_comm()
 
                 const std::int64_t offset_u = MPI::global_offset(mpi_comm, local_shape_u, true);
                 const std::int64_t offset_p = MPI::global_offset(mpi_comm, local_shape_p, true);
