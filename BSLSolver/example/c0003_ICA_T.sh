@@ -24,6 +24,9 @@ estimated_required_time="00:30:00"
 post_processing_time_minutes=180
 #Number of cores to use per node (everything run on a singe node) 
 num_cores=80 #(40 hyperthreaded to 80)
+#Whether or not to save ftle field. Default is False
+save_ftle=True
+
 set +a
 #OPTIONAL ARGUMENTS
 #Place these within set -+a and add them to argument list of mpirun command in solver.sh

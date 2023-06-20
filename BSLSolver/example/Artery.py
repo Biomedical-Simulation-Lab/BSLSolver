@@ -15,6 +15,7 @@ from oasis.problems import *
 from oasis.problems.NSfracStep import *
 
 from dolfin import *
+import glob
 from os import getpid, path, makedirs, getcwd
 import numpy as np
 #from probe import * - this is never used and probably out of date AH
@@ -30,6 +31,7 @@ from BSLSolver.common import Womersley
 #import naming
 import os #, h5io
 #from BSLSolver.common import WSS #only works in serial
+from BSLSolver.common import FTLE
 
 #///////////////////////////////////////////////////////////////
 # MPI node identification and size
@@ -254,6 +256,7 @@ def problem_parameters(commandline_kwargs, NS_parameters, **NS_namespace):
             save_step = get_cmdarg(commandline_kwargs, 'save_step', 100000), #Mehdi doesn't use the oasis output
             checkpoint = get_cmdarg(commandline_kwargs, 'checkpoint', 500),
             #print_WSS = get_cmdarg(commandline_kwargs, 'print_WSS', True),
+            save_ftle = get_cmdarg(commandline_kwargs, 'save_ftle', False)
             no_of_cycles = get_cmdarg(commandline_kwargs, 'cycles', 2),
             mesh_path = mesh_path, # commandline_kwargs["mesh_path"],
             id_in = id_in,
@@ -538,7 +541,7 @@ def get_file_paths(folder):
 
 #///////////////////////////////////////////function////////////////////
 def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
-                   restart_folder, velocity_degree, nu,**NS_namespace):
+                   restart_folder, tstep, velocity_degree, nu,**NS_namespace):
 
     if restart_folder is None:
         # Get files to store results
@@ -547,11 +550,19 @@ def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
     else:
         files = NS_namespace["files"]
 
+    #initialize ftle output file
+    ftle_path = path.join(folder,'/ftle_files')
+    if MPI.rank(MPI.comm_world) == 0:
+        if not path.exists(ftle_path):
+            mkdirs(ftle_path)
+    ftle_f = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_from_tstep{}.xdmf'.format(tstep))
+    ftle_f.parameters["flush_output"] = True
+
     return dict(hdf5_link=h5stdio,
                 files=files, #inout_area=NS_parameters['inout_area'],
                 final_time=NS_namespace['T'], current_cycle=0, 
                 timesteps=NS_namespace['time_steps'], total_cycles=NS_namespace['no_of_cycles'],
-                timestep_cpu_time=0, current_time=time.time(), cpu_time=0)
+                timestep_cpu_time=0, current_time=time.time(), cpu_time=0, ftle_f=ftle_f)
 
 #///////////////////////////////////////////////////////////////
 def beta(err, p):
@@ -574,7 +585,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
                   dump_stats, newfolder, id_in, files, id_out, inout_area, subdomain_data,
                   normals, store_data, hdf5_link, NS_expressions, current_cycle,
                   total_cycles, area_ratio, t, dS, timestep_cpu_time, current_time, 
-                  cpu_time, final_time, timesteps, not_zero_pressure_outlets, **NS_namespace):
+                  cpu_time, final_time, timesteps, not_zero_pressure_outlets, bcs, dt, ftle_f,**NS_namespace):
 
     # update the current cycles
     current_cycle = int(tstep / timesteps)
@@ -680,10 +691,13 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
     if (current_cycle > 0) and (current_cycle <= total_cycles-1):
         if tstep % store_data == 0:	
             h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_, int(MPI.comm_world.local_range()) ) #multiple nodes?
+            #save ftle field
+            if NS_parameters['save_ftle']:
+                ftle(mesh, V, u_, bcs['u0'], dt, tstep, ftle_f)
             if mpi_rank == 0:
                 h5stdio.SaveXDMF( os.path.join(NS_parameters['folder'], NS_parameters['case_fullname']+'.xdmf') )
 
-def theend_hook(stop, newfolder):
+def theend_hook(stop, newfolder, folder, save_ftle):
     if mpi_rank == 0:
         if stop:
             if path.exists(path.join(newfolder,'complete')):
@@ -693,6 +707,13 @@ def theend_hook(stop, newfolder):
             if path.exists(path.join(newfolder,'incomplete')):
                 os.remove(path.join(newfolder,'incomplete'))
             last_lines = open(path.join(newfolder,'complete'),'w')
+            if save_ftle:
+                # Gather files
+                xdmf_files = list(glob.glob(path.join(folder, ".xdmf")))
+                xdmf_ftle = [f for f in xdmf_files if "ftle_from_tstep" in f.__str__()]
+                # Merge files
+                if len(xdmf_ftle) > 1:
+                    merge_xml_files(xdmf_ftle)
         last_lines.write('\nTry: ' + newfolder.split('/')[-1])
         last_lines.write('\nCheckpoint: ' + newfolder)
         last_lines.close()
