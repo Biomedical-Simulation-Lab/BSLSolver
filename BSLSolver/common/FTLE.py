@@ -14,7 +14,7 @@ def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
     C = F.T*F
     #Get the eigenvalues of the C tensor
     eigensolver = SLEPcEigenSolver(C)
-    print "Computing eigenvalues of the Right Cauchy-Green Tensor"
+    print("Computing eigenvalues of the Right Cauchy-Green Tensor")
     eigensolver.solve()
     #get the maximum eigenvalues
     eigens, _, _, _ = eigensolver.get_eigenpair(0) #not expecting any complex eigs
