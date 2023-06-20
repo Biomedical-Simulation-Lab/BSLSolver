@@ -554,7 +554,7 @@ def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
     ftle_path = path.join(folder,'/ftle_files')
     if MPI.rank(MPI.comm_world) == 0:
         if not path.exists(ftle_path):
-            mkdirs(ftle_path)
+            makedirs(ftle_path)
     ftle_f = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_from_tstep{}.xdmf'.format(tstep))
     ftle_f.parameters["flush_output"] = True
 

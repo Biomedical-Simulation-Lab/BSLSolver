@@ -13,11 +13,11 @@ casename="c0003_ICA_T"
 #Number of cycles to run
 cycles=1 #default is 1
 #Number of timesteps for each cycle 
-timesteps_per_cycle=20000 #default is 2000
+timesteps_per_cycle=2000 #default is 2000
 #Velocity order
 uOrder=2 #default is 1
 #How many timesteps before saving
-save_frequency=8 #default 5
+save_frequency=1 #default 5
 #Amount of time Niagara will need to run the case (max 24 hours)
 estimated_required_time="00:30:00"
 #Amount of time needed to post-process the case (this is run on a single proc)
