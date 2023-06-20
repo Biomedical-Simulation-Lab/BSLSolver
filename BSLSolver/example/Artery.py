@@ -551,7 +551,7 @@ def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
         files = NS_namespace["files"]
 
     #initialize ftle output file
-    ftle_path = path.join(folder,'/ftle_files')
+    ftle_path = path.join(folder,'ftle_files')
     if MPI.rank(MPI.comm_world) == 0:
         if not path.exists(ftle_path):
             makedirs(ftle_path)
