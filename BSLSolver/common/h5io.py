@@ -122,7 +122,7 @@ class HDF5StdIO:
                         const std::string attributes, pybind11::dict explicit_attributes, 
                         const std::string dataset_name,
                         dolfin::Function& uf0, dolfin::Function& uf1, dolfin::Function& uf2,
-                        dolfin::Function& pf, const long int mpi_comm)
+                        dolfin::Function& pf) //, const long int mpi_comm)
             {
                 std::size_t i,j;
                 std::vector<double> uc[3];
@@ -154,6 +154,9 @@ class HDF5StdIO:
                 for (i = 1; i < shape_u.size(); ++i) local_shape_u /= shape_u[i];
                 std::int64_t local_shape_p = p.size();
                 for (i = 1; i < shape_p.size(); ++i) local_shape_p /= shape_p[i];
+
+                //Get communicator    
+                dolfin::MPI_Comm mpi_comm = pf.function_space()->mesh()->mpi_comm()
 
                 const std::int64_t offset_u = MPI::global_offset(mpi_comm, local_shape_u, true);
                 const std::int64_t offset_p = MPI::global_offset(mpi_comm, local_shape_p, true);
@@ -197,7 +200,7 @@ class HDF5StdIO:
         oflux = str(Q_outs)
         self.module.write_vars( os.path.join(self.output_folder, filename), 'w', str(parameters), 
                 {'t':t, 'timestep':timestep, 'timesteps':parameters['time_steps'], 'cycle':cycle, 'cycles':parameters['no_of_cycles'], 'Qin(mL/s)':iflux, 'Qout(mL/s)':oflux},
-                '/Solution', q['u0'].cpp_object(), q['u1'].cpp_object(), q['u2'].cpp_object(), q['p'].cpp_object(), mpi_comm_world)
+                '/Solution', q['u0'].cpp_object(), q['u1'].cpp_object(), q['u2'].cpp_object(), q['p'].cpp_object())#, mpi_comm_world)
         self.timeseries_count += 1
 
     def SaveXDMF(self, filename):
