@@ -44,9 +44,9 @@ def ftle(mesh, V, u, original_bcs, dt, tstep):
     i1 = tr(C_)
     i2 = -0.5*(tr(C_)**2-D_)
     i3 = det(C_)
-    I1 = project(i1, W).vector().get_local()
-    I2 = project(i2, W).vector().get_local()
-    I3 = project(i3, W).vector().get_local()
+    I1 = project(i1, CG1).vector().get_local()
+    I2 = project(i2, CG1).vector().get_local()
+    I3 = project(i3, CG1).vector().get_local()
 
     if MPI.rank(MPI.comm_world) == 0:
         print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
