@@ -9,7 +9,7 @@ def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
 
     CG1 = FunctionSpace(mesh, "CG", 1)
     #get the trajectories
-    F = grad(u) + Identity(len(u))
+    F = grad(u)*dt + Identity(len(u))
     #calculate the right Cauchy Green Tensor
     C = F.T*F
     #Get the eigenvalues of the C tensor
@@ -26,7 +26,7 @@ def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
     ftLe_forward = 1/dt * ln(eigs**(1/2))
     ftLe_forward.rename('ftLe_forward','forward-time')
 
-    F_b = Identity(len(u))- grad(u)
+    F_b = Identity(len(u))- grad(u)*dt
     #calculate the right Cauchy Green Tensor
     C_b = F_b.T*F_b
     #Get the eigenvalues of the C tensor
