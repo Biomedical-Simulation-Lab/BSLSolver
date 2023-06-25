@@ -52,7 +52,7 @@ def ftle(mesh, V, u, original_bcs, dt, tstep):
         print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
     vals = eigs(-np.ones(I1.shape), I1, I2, I3)
     max_eig = Function(CG1)
-    max_eig.vector()[:]=np.max(vals, axis = 0)
+    max_eig.vector().set_local(np.max(vals, axis = 0))
 
     ftLe_forward = project(1/dt * ln(max_eig**(1/2)),CG1)
     ftLe_forward.rename('ftLe_forward','forward-time')
@@ -71,7 +71,7 @@ def ftle(mesh, V, u, original_bcs, dt, tstep):
         print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
     vals_b = eigs(-np.ones(I1.shape), I1_b, I2_b, I3_b)
     max_eig_b = Function(CG1)
-    max_eig_b.vector()[:]=np.max(vals_b, axis = 0)
+    max_eig_b.vector().set_local(np.max(vals_b, axis = 0))
 
     ftLe_backward = project(1/dt * ln(max_eig_b**(1/2)), CG1)
     ftLe_backward.rename('ftLe_backward','backward-time')
