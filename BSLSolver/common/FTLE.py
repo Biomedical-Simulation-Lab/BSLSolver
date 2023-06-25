@@ -1,62 +1,79 @@
+import numpy as np
+from scipy.special import cbrt
 from dolfin import *
-from oasis.common import utilities
+import warnings
+warnings.filterwarnings('ignore')
+
+def eigs(a, b, c, d):
+    a,b,c,d = a+np.zeros(a.shape)*0.j, b+np.zeros(a.shape)*0.j, c+np.zeros(a.shape)*0.j, d+np.zeros(a.shape)*0.j
+    Q = (3*a*c - b**2)/ (9*a**2)
+    R = (9*a*b*c - 27*a**2*d - 2*b**3) / (54 * a**3)
+    D = Q**3 + R**2
+
+    numeric = np.isreal(R + np.sqrt(D))
+    S = np.zeros(a.shape)
+    S[numeric==True] = cbrt(np.real(R[numeric==True] + np.sqrt(D[numeric==True])))
+    S[numeric==False] = (R[numeric==False] + np.sqrt(D[numeric==False]))**(1/3)
+
+    T = np.zeros(a.shape)
+    numeric2=np.isreal(R - np.sqrt(D))
+    T[numeric2==True] = cbrt(np.real(R[numeric2==True] - np.sqrt(D[numeric2==True])))
+    T[numeric2==False] = (R[numeric2==False] - np.sqrt(D[numeric2==False]))**(1/3)
+
+    x1 = - b / (3*a) + (S+T)
+    x2 = - b / (3*a)  - (S+T) / 2 + 0.5j * np.sqrt(3) * (S - T)
+    x3 = - b / (3*a)  - (S+T) / 2 -  0.5j * np.sqrt(3) * (S - T)
+    return np.array([x1, x2, x3])   
 
 def ftle(mesh, V, u, original_bcs, dt, tstep):
-    new_bcs = []
-    subdomain = original_bcs[0].user_sub_domain()
-    if subdomain is None:
-        mesh = V.mesh()
-        ff = MeshFunction("size_t", mesh, mesh.topology().dim() - 1, 0)
-        for i, bc in enumerate(original_bcs):
-            bc.apply(u[0].vector())  # Need to initialize bc
-            m = bc.markers()  # Get facet indices of boundary
-            ff.array()[m] = i + 1
-            new_bcs.append(DirichletBC(V, Constant(0), ff, i + 1))
-    else:
-        for i, bc in enumerate(original_bcs):
-            subdomain = bc.user_sub_domain()
-            new_bcs.append(DirichletBC(V, Constant(0), subdomain))
-
     CG1 = FunctionSpace(mesh, "CG", 1)
     #get the trajectories
-    F = grad(u)*dt + Identity(len(u))
-    #calculate the right Cauchy Green Tensor
-    C = F.T*F
-    #Get the eigenvalues of the C tensor
-    if not has_slepc():
-        if MPI.rank(MPI.comm_world) == 0:
-            print("DOLFIN has not been configured with SLEPc. Exiting.")
-        exit()
-    eigensolver = SLEPcEigenSolver(C)
+    def C(u):
+        F = Identity(3) + grad(u)
+        return F.T*F
+    def C_b(u):
+        F = Identity(3) - grad(u)
+        return F.T*F
+    
+    def doubledot_trace(A):
+        return A[0,0]**2+A[1,1]**2+A[2,2]**2
+    #forward problem
+    #get invariants
+    C_ = C(u)
+    D_ = doubledot_trace(C_)
+    i1 = tr(C_)
+    i2 = -0.5*(tr(C_)**2-D_)
+    i3 = det(C_)
+    I1 = project(i1, W).vector().get_local()
+    I2 = project(i2, W).vector().get_local()
+    I3 = project(i3, W).vector().get_local()
+
     if MPI.rank(MPI.comm_world) == 0:
         print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
-    eigensolver.solve()
-    #get the maximum eigenvalues
-    eigens, _, _, _ = eigensolver.get_eigenpair(0) #not expecting any complex eigs
-    #project the eigenvalues to a CG1 space
-    eigs = OasisFunction(eigens, CG1, bcs=new_bcs, name='eigs',
-                            method='default', solver_type='bicgstab',
-                            preconditioner_type='jacobi')
-    eigs()
-    ftLe_forward = 1/dt * ln(eigs**(1/2))
+    vals = eigs(-np.ones(I1.shape), I1, I2, I3)
+    max_eig = Function(CG1)
+    max_eig.vector()[:]=np.max(vals, axis = 0)
+
+    ftLe_forward = project(1/dt * ln(max_eig**(1/2)),CG1)
     ftLe_forward.rename('ftLe_forward','forward-time')
 
-    F_b = Identity(len(u))- grad(u)*dt
-    #calculate the right Cauchy Green Tensor
-    C_b = F_b.T*F_b
-    #Get the eigenvalues of the C tensor
-    eigensolver_b = SLEPcEigenSolver(C_b)
+    #backward problem
+    #get invariants
+    Cb_ = C_b(u)
+    Db_ = doubledot_trace(Cb_)
+    i1_b = tr(Cb_)
+    i2_b = -0.5*(tr(Cb_)**2-Db_)
+    i3_b = det(Cb_)
+    I1_b = project(i1_b, CG1).vector().get_local()
+    I2_b = project(i2_b, CG1).vector().get_local()
+    I3_b = project(i3_b, CG1).vector().get_local()
     if MPI.rank(MPI.comm_world) == 0:
-        print("Computing eigenvalues of the Right Cauchy-Green Tensor fro the backward problem")
-    eigensolver_b.solve()
-    #get the maximum eigenvalues
-    eigens_b, _, _, _ = eigensolver.get_eigenpair(0) #not expecting any complex eigs
-    #project the eigenvalues to a CG1 space
-    eigs_b = OasisFunction(eigens_b, CG1, bcs=new_bcs, name='eigs_b',
-                            method='default', solver_type='bicgstab',
-                            preconditioner_type='jacobi')
-    eigs_b()
-    ftLe_backward = 1/dt * ln(eigs_b**(1/2))
+        print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
+    vals_b = eigs(-np.ones(I1.shape), I1_b, I2_b, I3_b)
+    max_eig_b = Function(CG1)
+    max_eig_b.vector()[:]=np.max(vals_b, axis = 0)
+
+    ftLe_backward = project(1/dt * ln(max_eig_b**(1/2)), CG1)
     ftLe_backward.rename('ftLe_backward','backward-time')
     
     #now just need to print to xdmffile
