@@ -4,6 +4,8 @@ README for the new BSL Solver
 =========================================================================
 1) Anywhere you see [YOUR USERNAME HERE] just put your Niagara username with no brackets there.
 
+2) I am still debugging this code. It is not 100% functional
+
 # GETTING STARTED:
 =========================================================================
 1) You will need an environment for the BSLSolver that you add to the input file. 
@@ -18,9 +20,9 @@ conda create -n oasis python=3.7 -y
 
 source activate oasis
 
-conda install mpi4py matplotlib gxx_linux-64 -y
+conda install matplotlib gxx_linux-64 -y
 
-NOTE: Dolfin is NOT compiled with mpi4py!!!
+NOTE: this version of Dolfin is compiled with mpi4py!!!
 
 Fixes: ImportError: /lib64/libz.so.1: version `ZLIB_1.2.9' not found
 
