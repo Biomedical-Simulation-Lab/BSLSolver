@@ -3,9 +3,20 @@ from oasis.common import utilities
 
 def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
     new_bcs = []
-    for i, bc in enumerate(original_bcs):
-        subdomain = bc.user_sub_domain()
-        new_bcs.append(DirichletBC(V, Constant(0), subdomain))
+    subdomain = original_bcs[0].user_sub_domain()
+    if subdomain is None:
+        mesh = V.mesh()
+        ff = MeshFunction("size_t", mesh, mesh.topology().dim() - 1, 0)
+        for i, bc in enumerate(original_bcs):
+            bc.apply(u[0].vector())  # Need to initialize bc
+            m = bc.markers()  # Get facet indices of boundary
+            ff.array()[m] = i + 1
+            new_bcs.append(DirichletBC(V, Constant(0), ff, i + 1))
+
+    else:
+        for i, bc in enumerate(original_bcs):
+            subdomain = bc.user_sub_domain()
+            new_bcs.append(DirichletBC(V, Constant(0), subdomain))
 
     CG1 = FunctionSpace(mesh, "CG", 1)
     #get the trajectories
