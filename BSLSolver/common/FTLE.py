@@ -1,7 +1,7 @@
 from dolfin import *
 from oasis.common import utilities
 
-def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
+def ftle(mesh, V, u, original_bcs, dt, tstep):
     new_bcs = []
     subdomain = original_bcs[0].user_sub_domain()
     if subdomain is None:
@@ -12,7 +12,6 @@ def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
             m = bc.markers()  # Get facet indices of boundary
             ff.array()[m] = i + 1
             new_bcs.append(DirichletBC(V, Constant(0), ff, i + 1))
-
     else:
         for i, bc in enumerate(original_bcs):
             subdomain = bc.user_sub_domain()
@@ -24,6 +23,10 @@ def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
     #calculate the right Cauchy Green Tensor
     C = F.T*F
     #Get the eigenvalues of the C tensor
+    if not has_slepc():
+        if MPI.rank(MPI.comm_world) == 0:
+            print("DOLFIN has not been configured with SLEPc. Exiting.")
+        exit()
     eigensolver = SLEPcEigenSolver(C)
     if MPI.rank(MPI.comm_world) == 0:
         print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
@@ -57,7 +60,7 @@ def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
     ftLe_backward.rename('ftLe_backward','backward-time')
     
     #now just need to print to xdmffile
-    with XDMFFile(MPI.comm_world, 'xdmf_f.xdmf') as file:
+    with XDMFFile(MPI.comm_world, 'results/ftle_files/ftle_from_tstep{}.xdmf'.format(tstep)) as file:
         file.parameters.update(
         {
             "functions_share_mesh": True,
