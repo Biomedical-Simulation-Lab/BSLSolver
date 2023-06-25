@@ -256,7 +256,7 @@ def problem_parameters(commandline_kwargs, NS_parameters, **NS_namespace):
             save_step = get_cmdarg(commandline_kwargs, 'save_step', 100000), #Mehdi doesn't use the oasis output
             checkpoint = get_cmdarg(commandline_kwargs, 'checkpoint', 500),
             #print_WSS = get_cmdarg(commandline_kwargs, 'print_WSS', True),
-            save_ftle = get_cmdarg(commandline_kwargs, 'save_ftle', False), 
+            save_ftle = get_cmdarg(commandline_kwargs, 'save_ftle', True), 
             no_of_cycles = get_cmdarg(commandline_kwargs, 'cycles', 2),
             mesh_path = mesh_path, # commandline_kwargs["mesh_path"],
             id_in = id_in,
@@ -693,7 +693,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
             #h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_)#, int(MPI.comm_world.underlying_comm()) ) #multiple nodes?
             #save ftle field
             if NS_parameters['save_ftle']:
-                ftle(mesh, V, u_, bcs['u0'], dt, tstep, ftle_f)
+                FTLE.ftle(mesh, V, u_, bcs['u0'], dt, tstep, ftle_f)
             if mpi_rank == 0:
                 h5stdio.SaveXDMF( os.path.join(NS_parameters['folder'], NS_parameters['case_fullname']+'.xdmf') )
 

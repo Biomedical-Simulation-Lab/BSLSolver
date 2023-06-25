@@ -14,7 +14,8 @@ def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
     C = F.T*F
     #Get the eigenvalues of the C tensor
     eigensolver = SLEPcEigenSolver(C)
-    print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
+    if MPI.rank(MPI.comm_world) == 0:
+        print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
     eigensolver.solve()
     #get the maximum eigenvalues
     eigens, _, _, _ = eigensolver.get_eigenpair(0) #not expecting any complex eigs
@@ -31,7 +32,8 @@ def ftle(mesh, V, u, original_bcs, dt, tstep, xdmf_f):
     C_b = F_b.T*F_b
     #Get the eigenvalues of the C tensor
     eigensolver_b = SLEPcEigenSolver(C_b)
-    print("Computing eigenvalues of the Right Cauchy-Green Tensor fro the backward problem")
+    if MPI.rank(MPI.comm_world) == 0:
+        print("Computing eigenvalues of the Right Cauchy-Green Tensor fro the backward problem")
     eigensolver_b.solve()
     #get the maximum eigenvalues
     eigens_b, _, _, _ = eigensolver.get_eigenpair(0) #not expecting any complex eigs
