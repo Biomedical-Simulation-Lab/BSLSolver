@@ -693,9 +693,9 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
             #h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_)#, int(MPI.comm_world.underlying_comm()) ) #multiple nodes?
             #save ftle field
             if NS_parameters['save_ftle']:
-                FTLE.ftle(mesh, V, u_, bcs['u0'], dt, tstep, ftle_f)
-            if mpi_rank == 0:
-                h5stdio.SaveXDMF( os.path.join(NS_parameters['folder'], NS_parameters['case_fullname']+'.xdmf') )
+                FTLE.ftle(mesh, u_, dt, tstep, ftle_f)
+            #if mpi_rank == 0:
+            #    h5stdio.SaveXDMF( os.path.join(NS_parameters['folder'], NS_parameters['case_fullname']+'.xdmf') )
 
 def theend_hook(stop, newfolder, folder, save_ftle):
     if mpi_rank == 0:

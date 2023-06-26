@@ -38,7 +38,7 @@ def eigenstate(A):
     val2 = q + p * ufl.cos(phi)  # high
     return val2
 
-def ftle(mesh, V, u, original_bcs, dt, tstep, ftle_f):
+def ftle(mesh, u, dt, tstep, ftle_f):
     t = Timer()
     CG1 = FunctionSpace(mesh, "CG", 1)
     #get the trajectories
