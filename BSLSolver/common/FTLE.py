@@ -1,5 +1,6 @@
 import ufl
 from dolfin import *
+from oasis.common import utilities
 import warnings
 
 def eigenstate(A):
@@ -38,9 +39,7 @@ def eigenstate(A):
     val2 = q + p * ufl.cos(phi)  # high
     return val2
 
-def ftle(mesh, u, dt, tstep, ftle_f):
-    t = Timer()
-    CG1 = FunctionSpace(mesh, "CG", 1)
+def setup_ftle(mesh, u, dt):
     #get the trajectories
     def C(u):
         F = Identity(3) + grad(u)*dt
@@ -48,31 +47,27 @@ def ftle(mesh, u, dt, tstep, ftle_f):
     def C_b(u):
         F = Identity(3) - grad(u)*dt
         return F.T*F
-    
-    def doubledot_trace(A):
-        return A[0,0]**2+A[1,1]**2+A[2,2]**2
     #forward problem
     C_ = C(u)
-
-    if MPI.rank(MPI.comm_world) == 0:
-        print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
     vals = eigenstate(C_)
-    max_eig = project(vals,CG1)
-    ftLe_forward = project(1/dt * ln(max_eig**(1/2)),CG1)
-    ftLe_forward.rename('ftLe_forward','forward-time')
-
+    #max_eig = project(vals,CG1)
+    scalar_krylov_solver=dict(
+        solver_type='bicgstab',
+        preconditioner_type='jacobi')
+    ftLe_forward = utilities.CG1Function(1/dt * ln(vals**(1/2)), mesh, method=scalar_krylov_solver, name="ftLe_forward")
     #backward problem
     Cb_ = C_b(u)
-    if MPI.rank(MPI.comm_world) == 0:
-        print("Computing eigenvalues of the Right Cauchy-Green Tensor for the backward problem")
     vals_b = eigenstate(Cb_)
-    max_eig_b = project(vals_b,CG1)
+    #max_eig_b = project(vals_b,CG1)
+    ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=scalar_krylov_solver, name="ftLe_backward")
+    return dict(ftLe_backward=ftLe_backward, ftLe_forward=ftLe_forward)
 
-    ftLe_backward = project(1/dt * ln(max_eig_b**(1/2)), CG1)
-    ftLe_backward.rename('ftLe_backward','backward-time')
+def get_ftle(ftLe_backward, ftLe_forward, ftle_f, tstep):
+    t = Timer()
+    ftLe_forward()
+    ftLe_backward()
     if MPI.rank(MPI.comm_world) == 0:
         print('Finished finding eigenvalues in %f s'%t.elapsed()[0])
-    
     #now just need to print to xdmffile
     with ftle_f as file:
         file.parameters.update({"rewrite_function_mesh": False})
