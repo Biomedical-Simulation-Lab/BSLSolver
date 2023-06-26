@@ -74,8 +74,10 @@ def ftle(mesh, u, dt, tstep, ftle_f):
         print('Finished finding eigenvalues in %f s'%t.elapsed()[0])
     
     #now just need to print to xdmffile
-    ftle_f.write(ftLe_forward, float(tstep))
-    ftle_f.write(ftLe_backward, float(tstep))
+    with ftle_f as file:
+        file.parameters.update({"rewrite_function_mesh": False})
+        file.write(ftLe_forward, float(tstep))
+        file.write(ftLe_backward, float(tstep))
 
 
 
