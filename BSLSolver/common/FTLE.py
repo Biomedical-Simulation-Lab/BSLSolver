@@ -60,7 +60,7 @@ def setup_ftle(mesh, u, dt):
     vals_b = eigenstate(Cb_)
     #max_eig_b = project(vals_b,CG1)
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=scalar_krylov_solver, name="ftLe_backward")
-    return dict(ftLe_backward=ftLe_backward, ftLe_forward=ftLe_forward)
+    return ftLe_backward, ftLe_forward
 
 def get_ftle(ftLe_backward, ftLe_forward, ftle_f, tstep):
     t = Timer()
