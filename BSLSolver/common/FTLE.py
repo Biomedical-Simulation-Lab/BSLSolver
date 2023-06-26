@@ -4,7 +4,7 @@ from dolfin import *
 import warnings
 warnings.filterwarnings('ignore')
 
-def eigs(a, b, c, d):
+def eigs_cardano(a, b, c, d):
     a,b,c,d = a+np.zeros(a.shape)*0.j, b+np.zeros(a.shape)*0.j, c+np.zeros(a.shape)*0.j, d+np.zeros(a.shape)*0.j
     Q = (3*a*c - b**2)/ (9*a**2)
     R = (9*a*b*c - 27*a**2*d - 2*b**3) / (54 * a**3)
@@ -25,7 +25,7 @@ def eigs(a, b, c, d):
     x3 = - b / (3*a)  - (S+T) / 2 -  0.5j * np.sqrt(3) * (S - T)
     return np.array([x1, x2, x3])   
 
-def ftle(mesh, V, u, original_bcs, dt, tstep):
+def ftle(mesh, V, u, original_bcs, dt, tstep, ftle_f):
     CG1 = FunctionSpace(mesh, "CG", 1)
     #get the trajectories
     def C(u):
@@ -50,7 +50,7 @@ def ftle(mesh, V, u, original_bcs, dt, tstep):
 
     if MPI.rank(MPI.comm_world) == 0:
         print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
-    vals = eigs(-np.ones(I1.shape), I1, I2, I3)
+    vals = eigs_cardano(-np.ones(I1.shape), I1, I2, I3)
     max_eig = Function(CG1)
     max_eig.vector().set_local(np.max(vals, axis = 0))
 
@@ -68,7 +68,7 @@ def ftle(mesh, V, u, original_bcs, dt, tstep):
     I2_b = project(i2_b, CG1).vector().get_local()
     I3_b = project(i3_b, CG1).vector().get_local()
     if MPI.rank(MPI.comm_world) == 0:
-        print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
+        print("Computing eigenvalues of the Right Cauchy-Green Tensor for the backward problem")
     vals_b = eigs(-np.ones(I1.shape), I1_b, I2_b, I3_b)
     max_eig_b = Function(CG1)
     max_eig_b.vector().set_local(np.max(vals_b, axis = 0))
@@ -77,12 +77,8 @@ def ftle(mesh, V, u, original_bcs, dt, tstep):
     ftLe_backward.rename('ftLe_backward','backward-time')
     
     #now just need to print to xdmffile
-    with XDMFFile(MPI.comm_world, 'results/ftle_files/ftle_from_tstep{}.xdmf'.format(tstep)) as file:
-        file.parameters.update(
-        {
-            "functions_share_mesh": True,
-            "rewrite_function_mesh": False
-        })
+    with ftle_f as file:
+        file.parameters.update({"rewrite_function_mesh": False})
         file.write(ftLe_forward, float(tstep))
         file.write(ftLe_backward, float(tstep))
 
