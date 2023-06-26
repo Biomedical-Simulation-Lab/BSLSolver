@@ -1,80 +1,77 @@
-import numpy as np
-from scipy.special import cbrt
+import ufl
 from dolfin import *
 import warnings
-warnings.filterwarnings('ignore')
 
-def eigs_cardano(a, b, c, d):
-    a,b,c,d = a+np.zeros(a.shape)*0.j, b+np.zeros(a.shape)*0.j, c+np.zeros(a.shape)*0.j, d+np.zeros(a.shape)*0.j
-    Q = (3*a*c - b**2)/ (9*a**2)
-    R = (9*a*b*c - 27*a**2*d - 2*b**3) / (54 * a**3)
-    D = Q**3 + R**2
-
-    numeric = np.isreal(R + np.sqrt(D))
-    S = np.zeros(a.shape)
-    S[numeric==True] = cbrt(np.real(R[numeric==True] + np.sqrt(D[numeric==True])))
-    S[numeric==False] = (R[numeric==False] + np.sqrt(D[numeric==False]))**(1/3)
-
-    T = np.zeros(a.shape)
-    numeric2=np.isreal(R - np.sqrt(D))
-    T[numeric2==True] = cbrt(np.real(R[numeric2==True] - np.sqrt(D[numeric2==True])))
-    T[numeric2==False] = (R[numeric2==False] - np.sqrt(D[numeric2==False]))**(1/3)
-
-    x1 = - b / (3*a) + (S+T)
-    x2 = - b / (3*a)  - (S+T) / 2 + 0.5j * np.sqrt(3) * (S - T)
-    x3 = - b / (3*a)  - (S+T) / 2 -  0.5j * np.sqrt(3) * (S - T)
-    return np.array([x1, x2, x3])   
+def eigenstate(A):
+    """Eigenvalues and eigenprojectors of the 3x3 (real-valued) tensor A.
+    Provides the spectral decomposition A = sum_{a=0}^{2} λ_a * E_a
+    with eigenvalues λ_a and their associated eigenprojectors E_a = n_a^R x n_a^L
+    ordered by magnitude.
+    The eigenprojectors of eigenvalues with multiplicity n are returned as 1/n-fold projector.
+    Note: Tensor A must not have complex eigenvalues!
+    """
+    eps = 1.0e-10
+    #
+    A = ufl.variable(A)
+    #
+    # --- determine eigenvalues λ0, λ1, λ2
+    #
+    # additively decompose: A = tr(A) / 3 * I + dev(A) = q * I + B
+    q = ufl.tr(A) / 3
+    B = A - q * ufl.Identity(3)
+    # observe: det(λI - A) = 0  with shift  λ = q + ω --> det(ωI - B) = 0 = ω**3 - j * ω - b
+    j = ufl.tr(B * B) / 2  # == -I2(B) for trace-free B, j < 0 indicates A has complex eigenvalues
+    b = ufl.tr(B * B * B) / 3  # == I3(B) for trace-free B
+    # solve: 0 = ω**3 - j * ω - b  by substitution  ω = p * cos(phi)
+    #        0 = p**3 * cos**3(phi) - j * p * cos(phi) - b  | * 4 / p**3
+    #        0 = 4 * cos**3(phi) - 3 * cos(phi) - 4 * b / p**3  | --> p := sqrt(j * 4 / 3)
+    #        0 = cos(3 * phi) - 4 * b / p**3
+    #        0 = cos(3 * phi) - r                  with  -1 <= r <= +1
+    #    phi_k = [acos(r) + (k + 1) * 2 * pi] / 3  for  k = 0, 1, 2
+    p = 2 / ufl.sqrt(3) * ufl.sqrt(j + eps ** 2)  # eps: MMM
+    r = 4 * b / p ** 3
+    r = ufl.Max(ufl.Min(r, +1 - eps), -1 + eps)  # eps: LMM, MMH
+    phi = ufl.acos(r) / 3
+    # sorted eigenvalues: λ0 <= λ1 <= λ2
+    val0 = q + p * ufl.cos(phi + 2 / 3 * ufl.pi)  # low
+    val1 = q + p * ufl.cos(phi + 4 / 3 * ufl.pi)  # middle
+    val2 = q + p * ufl.cos(phi)  # high
+    return val2
 
 def ftle(mesh, V, u, original_bcs, dt, tstep, ftle_f):
+    t = Timer()
     CG1 = FunctionSpace(mesh, "CG", 1)
     #get the trajectories
     def C(u):
-        F = Identity(3) + grad(u)
+        F = Identity(3) + grad(u)*dt
         return F.T*F
     def C_b(u):
-        F = Identity(3) - grad(u)
+        F = Identity(3) - grad(u)*dt
         return F.T*F
     
     def doubledot_trace(A):
         return A[0,0]**2+A[1,1]**2+A[2,2]**2
     #forward problem
-    #get invariants
     C_ = C(u)
-    D_ = doubledot_trace(C_)
-    i1 = tr(C_)
-    i2 = -0.5*(tr(C_)**2-D_)
-    i3 = det(C_)
-    I1 = project(i1, CG1).vector().get_local()
-    I2 = project(i2, CG1).vector().get_local()
-    I3 = project(i3, CG1).vector().get_local()
 
     if MPI.rank(MPI.comm_world) == 0:
         print("Computing eigenvalues of the Right Cauchy-Green Tensor for the forward problem")
-    vals = eigs_cardano(-np.ones(I1.shape), I1, I2, I3)
-    max_eig = Function(CG1)
-    max_eig.vector().set_local(np.max(vals, axis = 0))
-
+    vals = eigenstate(C_)
+    max_eig = project(vals,CG1)
     ftLe_forward = project(1/dt * ln(max_eig**(1/2)),CG1)
     ftLe_forward.rename('ftLe_forward','forward-time')
 
     #backward problem
-    #get invariants
     Cb_ = C_b(u)
-    Db_ = doubledot_trace(Cb_)
-    i1_b = tr(Cb_)
-    i2_b = -0.5*(tr(Cb_)**2-Db_)
-    i3_b = det(Cb_)
-    I1_b = project(i1_b, CG1).vector().get_local()
-    I2_b = project(i2_b, CG1).vector().get_local()
-    I3_b = project(i3_b, CG1).vector().get_local()
     if MPI.rank(MPI.comm_world) == 0:
         print("Computing eigenvalues of the Right Cauchy-Green Tensor for the backward problem")
-    vals_b = eigs(-np.ones(I1.shape), I1_b, I2_b, I3_b)
-    max_eig_b = Function(CG1)
-    max_eig_b.vector().set_local(np.max(vals_b, axis = 0))
+    vals_b = eigenstate(Cb_)
+    max_eig_b = project(vals_b,CG1)
 
     ftLe_backward = project(1/dt * ln(max_eig_b**(1/2)), CG1)
     ftLe_backward.rename('ftLe_backward','backward-time')
+    if MPI.rank(MPI.comm_world) == 0:
+        print('Finished finding eigenvalues in %f s'%t.elapsed()[0])
     
     #now just need to print to xdmffile
     with ftle_f as file:
