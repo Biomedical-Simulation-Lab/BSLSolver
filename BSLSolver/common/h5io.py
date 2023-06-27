@@ -122,7 +122,7 @@ class HDF5StdIO:
                         const std::string attributes, pybind11::dict explicit_attributes, 
                         const std::string dataset_name,
                         dolfin::Function& uf0, dolfin::Function& uf1, dolfin::Function& uf2,
-                        dolfin::Function& pf)//, const long int mpi_comm)
+                        dolfin::Function& pf, MPI_Comm mpi_comm)//, const long int mpi_comm)
             {
                 std::size_t i,j;
                 std::vector<double> uc[3];
@@ -137,7 +137,7 @@ class HDF5StdIO:
                     u[j++] = uc[1][i];
                     u[j++] = uc[2][i];
                 }
-                const MPI_Comm mpi_comm = u.function_space()->mesh()->mpi_comm()
+
                 std::int64_t num_values = pf.function_space()->mesh()->num_entities_global(0);
 
                 std::vector<std::int64_t> shape_u = {num_values, 3};
@@ -187,7 +187,7 @@ class HDF5StdIO:
         self.t = t
         self.timestep = timestep
 
-    def Save(self, cycle, t, timestep, Q_ins, Q_outs, parameters, name, q): #=mpi_comm_world):
+    def Save(self, cycle, t, timestep, Q_ins, Q_outs, parameters, name, q, mpi_comm_world):
         self.SetTime(t, timestep)
         filename = self.filename_time_template%(cycle, self.t, self.timestep)
         txt = self.xml_node_grid_vector_scalar_tmp%(name, self.t, filename, filename)
