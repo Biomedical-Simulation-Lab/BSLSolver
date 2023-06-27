@@ -122,7 +122,7 @@ class HDF5StdIO:
                         const std::string attributes, pybind11::dict explicit_attributes, 
                         const std::string dataset_name,
                         dolfin::Function& uf0, dolfin::Function& uf1, dolfin::Function& uf2,
-                        dolfin::Function& pf, MPI_Comm mpi_comm)//, const long int mpi_comm)
+                        dolfin::Function& pf))//, MPI_Comm mpi_comm), const long int mpi_comm)
             {
                 std::size_t i,j;
                 std::vector<double> uc[3];
@@ -137,7 +137,7 @@ class HDF5StdIO:
                     u[j++] = uc[1][i];
                     u[j++] = uc[2][i];
                 }
-
+                const auto mesh = u.function_space()->mesh();
                 std::int64_t num_values = pf.function_space()->mesh()->num_entities_global(0);
 
                 std::vector<std::int64_t> shape_u = {num_values, 3};
@@ -146,8 +146,8 @@ class HDF5StdIO:
                 // std::int64_t num_items_total_u = 1, num_items_total_p = 1;
                 // for (auto n : shape_u) num_items_total_u *= n;
                 // for (auto n : shape_p) num_items_total_p *= n;
-                // dolfin_assert(num_items_total_u == (std::int64_t) MPI::sum(mpi_comm, u.size()));
-                // dolfin_assert(num_items_total_p == (std::int64_t) MPI::sum(mpi_comm, p.size()));
+                // dolfin_assert(num_items_total_u == (std::int64_t) MPI::sum(mesh->mpi_comm(), u.size()));
+                // dolfin_assert(num_items_total_p == (std::int64_t) MPI::sum(mesh->mpi_comm(), p.size()));
 
                 // Compute data offset and range of values
                 std::int64_t local_shape_u = u.size();
@@ -155,8 +155,8 @@ class HDF5StdIO:
                 std::int64_t local_shape_p = p.size();
                 for (i = 1; i < shape_p.size(); ++i) local_shape_p /= shape_p[i];
 
-                const std::int64_t offset_u = MPI::global_offset(mpi_comm, local_shape_u, true);
-                const std::int64_t offset_p = MPI::global_offset(mpi_comm, local_shape_p, true);
+                const std::int64_t offset_u = MPI::global_offset(mesh->mpi_comm(), local_shape_u, true);
+                const std::int64_t offset_p = MPI::global_offset(mesh->mpi_comm(), local_shape_p, true);
                 const std::pair<std::int64_t, std::int64_t> local_range_u = {offset_u, offset_u + local_shape_u};
                 const std::pair<std::int64_t, std::int64_t> local_range_p = {offset_p, offset_p + local_shape_p};
 
@@ -164,7 +164,7 @@ class HDF5StdIO:
                 const bool use_mpi_io = true; // (MPI::size(comm) > 1);
                 const bool chunking = false;
 
-                hid_t hdf5_file_id = HDF5Interface::open_file(mpi_comm, filename, file_mode, use_mpi_io);
+                hid_t hdf5_file_id = HDF5Interface::open_file(mesh->mpi_comm(), filename, file_mode, use_mpi_io);
                 HDF5Interface::write_dataset(hdf5_file_id, dataset_name+"/u", u,
                                             local_range_u, shape_u, use_mpi_io, chunking);
                 HDF5Interface::write_dataset(hdf5_file_id, dataset_name+"/p", p,
@@ -187,7 +187,7 @@ class HDF5StdIO:
         self.t = t
         self.timestep = timestep
 
-    def Save(self, cycle, t, timestep, Q_ins, Q_outs, parameters, name, q, mpi_comm_world):
+    def Save(self, cycle, t, timestep, Q_ins, Q_outs, parameters, name, q)#, mpi_comm_world):
         self.SetTime(t, timestep)
         filename = self.filename_time_template%(cycle, self.t, self.timestep)
         txt = self.xml_node_grid_vector_scalar_tmp%(name, self.t, filename, filename)
