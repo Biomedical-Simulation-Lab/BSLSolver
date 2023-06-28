@@ -187,7 +187,7 @@ class HDF5StdIO:
         self.t = t
         self.timestep = timestep
 
-    def Save(self, cycle, t, timestep, Q_ins, Q_outs, parameters, name, q, mpi_comm_world):
+    def Save(self, cycle, t, timestep, Q_ins, Q_outs, parameters, name, q)#, mpi_comm_world):
         self.SetTime(t, timestep)
         filename = self.filename_time_template%(cycle, self.t, self.timestep)
         txt = self.xml_node_grid_vector_scalar_tmp%(name, self.t, filename, filename)
