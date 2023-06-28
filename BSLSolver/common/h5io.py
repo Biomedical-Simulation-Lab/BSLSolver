@@ -137,7 +137,7 @@ class HDF5StdIO:
                     u[j++] = uc[1][i];
                     u[j++] = uc[2][i];
                 }
-
+                
                 std::int64_t num_values = pf.function_space()->mesh()->num_entities_global(0);
 
                 std::vector<std::int64_t> shape_u = {num_values, 3};
@@ -146,8 +146,8 @@ class HDF5StdIO:
                 // std::int64_t num_items_total_u = 1, num_items_total_p = 1;
                 // for (auto n : shape_u) num_items_total_u *= n;
                 // for (auto n : shape_p) num_items_total_p *= n;
-                // dolfin_assert(num_items_total_u == (std::int64_t) MPI::sum(mpi_comm, u.size()));
-                // dolfin_assert(num_items_total_p == (std::int64_t) MPI::sum(mpi_comm, p.size()));
+                // dolfin_assert(num_items_total_u == (std::int64_t) MPI::sum(MPI_COMM_WORLD, u.size()));
+                // dolfin_assert(num_items_total_p == (std::int64_t) MPI::sum(MPI_COMM_WORLD, p.size()));
 
                 // Compute data offset and range of values
                 std::int64_t local_shape_u = u.size();
@@ -187,7 +187,7 @@ class HDF5StdIO:
         self.t = t
         self.timestep = timestep
 
-    def Save(self, cycle, t, timestep, Q_ins, Q_outs, parameters, name, q):#, mpi_comm_world):
+    def Save(self, cycle, t, timestep, Q_ins, Q_outs, parameters, name, q):
         self.SetTime(t, timestep)
         filename = self.filename_time_template%(cycle, self.t, self.timestep)
         txt = self.xml_node_grid_vector_scalar_tmp%(name, self.t, filename, filename)
@@ -195,6 +195,7 @@ class HDF5StdIO:
         self.insert_pos += len(txt)
         iflux = str(Q_ins)
         oflux = str(Q_outs)
+        from mpi4py import MPI as mp
         self.module.write_vars( os.path.join(self.output_folder, filename), 'w', str(parameters), 
                 {'t':t, 'timestep':timestep, 'timesteps':parameters['time_steps'], 'cycle':cycle, 'cycles':parameters['no_of_cycles'], 'Qin(mL/s)':iflux, 'Qout(mL/s)':oflux},
                 '/Solution', q['u0'].cpp_object(), q['u1'].cpp_object(), q['u2'].cpp_object(), q['p'].cpp_object())
