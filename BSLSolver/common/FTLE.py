@@ -60,9 +60,11 @@ def setup_ftle(mesh, u, dt):
     vals_b = eigenstate(Cb_)
     #max_eig_b = project(vals_b,CG1)
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=scalar_krylov_solver, name="ftLe_backward")
-    return ftLe_backward, ftLe_forward
+    
+    ftLe_intersect = utilities.CG1Function(1/dt * ln(vals**(1/2)), mesh, method=scalar_krylov_solver, name="ftLe_intersect")
+    return ftLe_backward, ftLe_forward, ftLe_intersect
 
-def get_ftle(ftLe_backward, ftLe_forward, ftle_f, tstep):
+def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, ftle_f, tstep):
     t = Timer()
     ftLe_forward()
     ftLe_backward()
@@ -73,6 +75,7 @@ def get_ftle(ftLe_backward, ftLe_forward, ftle_f, tstep):
         file.parameters.update({"rewrite_function_mesh": False})
         file.write(ftLe_forward, float(tstep))
         file.write(ftLe_backward, float(tstep))
+        file.write(ftLe_intersect, float(tstep))
 
 
 

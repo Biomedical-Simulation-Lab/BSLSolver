@@ -586,7 +586,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
                   dump_stats, newfolder, id_in, files, id_out, inout_area, subdomain_data,
                   normals, store_data, hdf5_link, NS_expressions, current_cycle,
                   total_cycles, area_ratio, t, dS, timestep_cpu_time, current_time, 
-                  cpu_time, final_time, timesteps, not_zero_pressure_outlets,ftle_f, ftLe_forward, ftLe_backward, **NS_namespace):
+                  cpu_time, final_time, timesteps, not_zero_pressure_outlets,ftle_f, ftLe_forward, ftLe_backward, ftLe_intersect, **NS_namespace):
 
     # update the current cycles
     current_cycle = int(tstep / timesteps)
@@ -694,7 +694,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
             h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_) #multiple nodes?
             #save ftle field
             if NS_parameters['save_ftle']:
-                FTLE.get_ftle(ftLe_forward, ftLe_backward, ftle_f, tstep)
+                FTLE.get_ftle(ftLe_forward, ftLe_backward, ftLe_intersect, ftle_f, tstep)
             if mpi_rank == 0:
                 h5stdio.SaveXDMF( os.path.join(NS_parameters['folder'], NS_parameters['case_fullname']+'.xdmf') )
 
