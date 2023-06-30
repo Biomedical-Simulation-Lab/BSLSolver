@@ -61,7 +61,7 @@ def setup_ftle(mesh, u, dt):
     #max_eig_b = project(vals_b,CG1)
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=scalar_krylov_solver, name="ftLe_backward")
     
-    ftLe_intersect = utilities.CG1Function(1/dt * ln(vals**(1/2)), mesh, method=scalar_krylov_solver, name="ftLe_intersect")
+    ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=scalar_krylov_solver, name="ftLe_intersect")
     return ftLe_backward, ftLe_forward, ftLe_intersect
 
 def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, ftle_f, tstep):
