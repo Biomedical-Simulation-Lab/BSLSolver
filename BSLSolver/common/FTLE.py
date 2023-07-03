@@ -77,6 +77,10 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     t = Timer()
     ftLe_forward()
     ftLe_backward()
+    ftLe_intersect()
+    if MPI.rank(MPI.comm_world) == 0:
+        print('Finished finding ftLe fields in %f s'%t.elapsed()[0])
+        
     #get Hessian matrix of backward (attracting ftle)
     _grad_sig  = as_vector([grad_sig[ui](ftLe_backward) for ui in components])
     hess = grad(_grad_sig) #ufl Hessian matrix DG0
@@ -88,7 +92,7 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     lcs = utilities.CG1Function(inner(grad_sig, e_min), mesh, method=_krylov_solver, name="lcs") #scalar-valued    
     lcs()
     if MPI.rank(MPI.comm_world) == 0:
-        print('Finished finding eigenvalues in %f s'%t.elapsed()[0])
+        print('Finished finding total LCS in %f s'%t.elapsed()[0])
     #now just need to print to xdmffile
     with ftle_f as file:
         file.parameters.update({"rewrite_function_mesh": False})
