@@ -70,7 +70,7 @@ def setup_ftle(mesh, V, u, dt):
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=_krylov_solver, name="ftLe_backward")
     ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=_krylov_solver, name="ftLe_intersect")
     #set up a library of gradients of sigma (backward)
-    grad_sig = {ui: utilities.GradFunction(ftle_backward, V, i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
+    grad_sig = {ui: utilities.GradFunction(ftLe_backward, V, i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
     return ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig
 
 def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f, tstep):
@@ -80,7 +80,7 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     ftLe_intersect()
     if MPI.rank(MPI.comm_world) == 0:
         print('Finished finding ftLe fields in %f s'%t.elapsed()[0])
-        
+
     #get Hessian matrix of backward (attracting ftle)
     _grad_sig  = as_vector([grad_sig[ui](ftLe_backward) for ui in components])
     hess = grad(_grad_sig) #ufl Hessian matrix DG0
