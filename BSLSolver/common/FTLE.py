@@ -3,6 +3,10 @@ from dolfin import *
 from oasis.common import utilities
 import warnings
 
+_krylov_solver=dict(
+        solver_type='bicgstab',
+        preconditioner_type='jacobi')
+
 def eigenstate(A):
     """Eigenvalues and eigenprojectors of the 3x3 (real-valued) tensor A.
     Provides the spectral decomposition A = sum_{a=0}^{2} λ_a * E_a
@@ -56,10 +60,6 @@ def setup_ftle(mesh, u, dt):
     C_ = C(u)
     vals, _ = eigenstate(C_)
     #max_eig = project(vals,CG1)
-    _krylov_solver=dict(
-        solver_type='bicgstab',
-        preconditioner_type='jacobi')
-    
     ftLe_forward = utilities.CG1Function(1/dt * ln(vals**(1/2)), mesh, method=_krylov_solver, name="ftLe_forward")
     #backward problem
     Cb_ = C_b(u)
@@ -67,22 +67,23 @@ def setup_ftle(mesh, u, dt):
     #max_eig_b = project(vals_b,CG1)
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=_krylov_solver, name="ftLe_backward")
     ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=_krylov_solver, name="ftLe_intersect")
-    
-    #get Hessian matrix of backward (attracting ftle)
-    grad_sig = utilities.CG1Function(grad(ftLe_backward), mesh, method=_krylov_solver, name="grad_ftle") #vector-valued
-    hess = grad(grad_sig) #ufl matrix DG0
-    #get minimum eigenvector
-    _, e_min = eigenstate(hess) #the Hessian should always have real eigenvalues for any real function such as the ftle field
-    e_min_proj = utilities.CG1Function(e_min, mesh, method=_krylov_solver, name="e_min") #project to CG1
-    #get the minima
-    lcs = utilities.CG1Function(inner(grad_sig, e_min_proj), mesh, method=_krylov_solver, name="lcs") #scalar-valued
-    
-    return ftLe_backward, ftLe_forward, ftLe_intersect, lcs
 
-def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, lcs, ftle_f, tstep):
+    grad_sig = utilities.CG1Function(grad(ftLe_backward), mesh, method=_krylov_solver, name="grad_sig") #vector-valued
+    grad_sig()
+    return ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig
+
+def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f, tstep):
     t = Timer()
     ftLe_forward()
     ftLe_backward()
+    #get Hessian matrix of backward (attracting ftle)
+    hess = grad(grad_sig) #ufl matrix DG0
+    #get minimum eigenvector
+    _, e_min_DG0 = eigenstate(hess) #the Hessian should always have real eigenvalues for any real function such as the ftle field
+    e_min = utilities.CG1Function(e_min_DG0, mesh, method=_krylov_solver, name="e_min") #project to CG1
+    e_min()
+    #get the minima
+    lcs = utilities.CG1Function(inner(grad_sig, e_min), mesh, method=_krylov_solver, name="lcs") #scalar-valued    
     lcs()
     if MPI.rank(MPI.comm_world) == 0:
         print('Finished finding eigenvalues in %f s'%t.elapsed()[0])
