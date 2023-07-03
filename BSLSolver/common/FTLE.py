@@ -84,7 +84,7 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     grad_sig['1'](ftLe_backward)
     grad_sig['2'](ftLe_backward)
     #get Hessian matrix of backward (attracting ftle)
-    _grad_sig  = as_vector([grad_sig[ui] for ui in components))
+    _grad_sig  = as_vector([grad_sig[ui] for ui in components])
     hess = grad(_grad_sig) #ufl Hessian matrix DG0
     #get minimum eigenvector
     _, e_min_DG0 = eigenstate(hess) #the Hessian should always have real eigenvalues for any real function such as the ftle field
