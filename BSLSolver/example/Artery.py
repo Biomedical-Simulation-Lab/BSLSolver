@@ -557,7 +557,7 @@ def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
             makedirs(ftle_path)
     ftle_f = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_from_tstep{}.xdmf'.format(tstep))
     ftle_f.parameters["flush_output"] = True
-    ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig = FTLE.setup_ftle(mesh, u_, NS_namespace['dt'])
+    ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig = FTLE.setup_ftle(mesh, V, u_, NS_namespace['dt'])
 
     return dict(hdf5_link=h5stdio,
                 files=files, #inout_area=NS_parameters['inout_area'],

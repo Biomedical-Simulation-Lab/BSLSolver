@@ -7,6 +7,8 @@ _krylov_solver=dict(
         solver_type='bicgstab',
         preconditioner_type='jacobi')
 
+components = ['x','y','z']
+
 def eigenstate(A):
     """Eigenvalues and eigenprojectors of the 3x3 (real-valued) tensor A.
     Provides the spectral decomposition A = sum_{a=0}^{2} λ_a * E_a
@@ -48,7 +50,7 @@ def eigenstate(A):
     #
     return val2, E0
 
-def setup_ftle(mesh, u, dt):
+def setup_ftle(mesh, V, u, dt):
     #get the trajectories
     def C(u):
         F = Identity(3) + grad(u)*dt
@@ -67,9 +69,8 @@ def setup_ftle(mesh, u, dt):
     #max_eig_b = project(vals_b,CG1)
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=_krylov_solver, name="ftLe_backward")
     ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=_krylov_solver, name="ftLe_intersect")
-
-    grad_sig = utilities.CG1Function(grad(ftLe_backward), mesh, method=_krylov_solver, name="grad_sig") #vector-valued
-    grad_sig()
+    #set up a library of gradients of sigma (backward)
+    grad_sig = {ui: utilities.GradFunction(ftle_backward, V, i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
     return ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig
 
 def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f, tstep):
@@ -77,7 +78,8 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     ftLe_forward()
     ftLe_backward()
     #get Hessian matrix of backward (attracting ftle)
-    hess = grad(grad_sig) #ufl matrix DG0
+    _grad_sig  = as_vector([grad_sig[ui](ftLe_backward) for ui in components])
+    hess = grad(_grad_sig) #ufl Hessian matrix DG0
     #get minimum eigenvector
     _, e_min_DG0 = eigenstate(hess) #the Hessian should always have real eigenvalues for any real function such as the ftle field
     e_min = utilities.CG1Function(e_min_DG0, mesh, method=_krylov_solver, name="e_min") #project to CG1
