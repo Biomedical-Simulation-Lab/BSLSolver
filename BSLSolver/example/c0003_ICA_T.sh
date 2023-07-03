@@ -12,6 +12,8 @@ debug=on
 casename="c0003_ICA_T"
 #Number of cycles to run
 cycles=1 #default is 1
+#waveform period
+period=951 #default is 915 ms
 #Number of timesteps for each cycle 
 timesteps_per_cycle=2000 #default is 2000
 #Velocity order
@@ -30,7 +32,6 @@ save_ftle=True
 set +a
 #OPTIONAL ARGUMENTS
 #Place these within set -+a and add them to argument list of mpirun command in solver.sh
-#period=951 #ms
 #viscosity=0.0035 #default 0.0035
 #zero_pressure_outlets= False #default True
 #include_gravitational_effects=False #default False

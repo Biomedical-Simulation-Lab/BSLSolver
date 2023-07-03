@@ -37,7 +37,12 @@ def eigenstate(A):
     val0 = q + p * ufl.cos(phi + 2 / 3 * ufl.pi)  # low
     val1 = q + p * ufl.cos(phi + 4 / 3 * ufl.pi)  # middle
     val2 = q + p * ufl.cos(phi)  # high
-    return val2
+
+    E0 = ufl.diff(val0, A).T
+    E1 = ufl.diff(val1, A).T
+    E2 = ufl.diff(val2, A).T
+    #
+    return val2, E0
 
 def setup_ftle(mesh, u, dt):
     #get the trajectories
@@ -49,25 +54,36 @@ def setup_ftle(mesh, u, dt):
         return F.T*F
     #forward problem
     C_ = C(u)
-    vals = eigenstate(C_)
+    vals, _ = eigenstate(C_)
     #max_eig = project(vals,CG1)
-    scalar_krylov_solver=dict(
+    _krylov_solver=dict(
         solver_type='bicgstab',
         preconditioner_type='jacobi')
-    ftLe_forward = utilities.CG1Function(1/dt * ln(vals**(1/2)), mesh, method=scalar_krylov_solver, name="ftLe_forward")
+    
+    ftLe_forward = utilities.CG1Function(1/dt * ln(vals**(1/2)), mesh, method=_krylov_solver, name="ftLe_forward")
     #backward problem
     Cb_ = C_b(u)
-    vals_b = eigenstate(Cb_)
+    vals_b, _ = eigenstate(Cb_)
     #max_eig_b = project(vals_b,CG1)
-    ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=scalar_krylov_solver, name="ftLe_backward")
+    ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=_krylov_solver, name="ftLe_backward")
+    ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=_krylov_solver, name="ftLe_intersect")
     
-    ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=scalar_krylov_solver, name="ftLe_intersect")
-    return ftLe_backward, ftLe_forward, ftLe_intersect
+    #get Hessian matrix of backward (attracting ftle)
+    grad_sig = utilities.CG1Function(grad(ftLe_backward), mesh, method=_krylov_solver, name="grad_ftle") #vector-valued
+    hess = grad(grad_sig) #ufl matrix DG0
+    #get minimum eigenvector
+    _, e_min = eigenstate(hess) #the Hessian should always have real eigenvalues for any real function such as the ftle field
+    e_min_proj = utilities.CG1Function(e_min, mesh, method=_krylov_solver, name="e_min") #project to CG1
+    #get the minima
+    lcs = utilities.CG1Function(inner(grad_sig, e_min_proj), mesh, method=_krylov_solver, name="lcs") #scalar-valued
+    
+    return ftLe_backward, ftLe_forward, ftLe_intersect, lcs
 
-def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, ftle_f, tstep):
+def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, lcs, ftle_f, tstep):
     t = Timer()
     ftLe_forward()
     ftLe_backward()
+    lcs()
     if MPI.rank(MPI.comm_world) == 0:
         print('Finished finding eigenvalues in %f s'%t.elapsed()[0])
     #now just need to print to xdmffile
@@ -76,6 +92,7 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, ftle_f, tstep):
         file.write(ftLe_forward, float(tstep))
         file.write(ftLe_backward, float(tstep))
         file.write(ftLe_intersect, float(tstep))
+        file.write(lcs, float(tstep))
 
 
 

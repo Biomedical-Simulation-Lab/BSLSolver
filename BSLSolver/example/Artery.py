@@ -557,13 +557,13 @@ def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
             makedirs(ftle_path)
     ftle_f = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_from_tstep{}.xdmf'.format(tstep))
     ftle_f.parameters["flush_output"] = True
-    ftLe_backward, ftLe_forward = FTLE.setup_ftle(mesh, u_, NS_namespace['dt'])
+    ftLe_backward, ftLe_forward, ftLe_intersect, lcs = FTLE.setup_ftle(mesh, u_, NS_namespace['dt'])
 
     return dict(hdf5_link=h5stdio,
                 files=files, #inout_area=NS_parameters['inout_area'],
                 final_time=NS_namespace['T'], current_cycle=0, 
                 timesteps=NS_namespace['time_steps'], total_cycles=NS_namespace['no_of_cycles'],
-                timestep_cpu_time=0, current_time=time.time(), cpu_time=0, ftle_f=ftle_f, ftLe_backward=ftLe_backward, ftLe_forward=ftLe_forward)
+                timestep_cpu_time=0, current_time=time.time(), cpu_time=0, ftle_f=ftle_f, ftLe_backward=ftLe_backward, ftLe_forward=ftLe_forward, ftLe_intersect=ftLe_intersect, lcs=lcs)
 
 #///////////////////////////////////////////////////////////////
 def beta(err, p):
@@ -586,7 +586,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
                   dump_stats, newfolder, id_in, files, id_out, inout_area, subdomain_data,
                   normals, store_data, hdf5_link, NS_expressions, current_cycle,
                   total_cycles, area_ratio, t, dS, timestep_cpu_time, current_time, 
-                  cpu_time, final_time, timesteps, not_zero_pressure_outlets,ftle_f, ftLe_forward, ftLe_backward, ftLe_intersect, **NS_namespace):
+                  cpu_time, final_time, timesteps, not_zero_pressure_outlets,ftle_f, ftLe_forward, ftLe_backward, ftLe_intersect, lcs, **NS_namespace):
 
     # update the current cycles
     current_cycle = int(tstep / timesteps)
@@ -694,7 +694,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
             h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_) #multiple nodes?
             #save ftle field
             if NS_parameters['save_ftle']:
-                FTLE.get_ftle(ftLe_forward, ftLe_backward, ftLe_intersect, ftle_f, tstep)
+                FTLE.get_ftle(ftLe_forward, ftLe_backward, ftLe_intersect, lcs, ftle_f, tstep)
             if mpi_rank == 0:
                 h5stdio.SaveXDMF( os.path.join(NS_parameters['folder'], NS_parameters['case_fullname']+'.xdmf') )
 

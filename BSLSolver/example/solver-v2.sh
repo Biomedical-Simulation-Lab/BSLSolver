@@ -109,7 +109,7 @@ echo "Results folder: " \$results_folder
 echo "Log File: " \$log_file
 echo "Restart Number: " \$(( \$restart_no+1 ))
 restart_folder=\${results_folder}/data/\${restart_no}/Checkpoint #this is not accurate for new oasis restart_folder=\$restart_folder
-#mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle cycles=$cycles save_frequency=$save_frequency mesh_name=$casename &>> \$log_file
+#mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle period=$period cycles=$cycles save_frequency=$save_frequency mesh_name=$casename &>> \$log_file
 
 if [ \$simdone == "0" ]; then
   if [ \$restart_no -gt 0 ]; then
@@ -119,7 +119,7 @@ if [ \$simdone == "0" ]; then
       restart_folder=\${results_folder}/data/\${restart_no}/Checkpoint
       echo "restart_folder: " \$restart_folder
       echo \$(date) > \$log_file
-      mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle cycles=$cycles save_frequency=$save_frequency \
+      mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle period=$period cycles=$cycles save_frequency=$save_frequency \
              mesh_name=$casename restart_folder=\$restart_folder &>> \$log_file
     else
       echo "<!> Something went wrong! You should inspect what happened at Checkpoint#\${restart_no} in order to avoid an infinite loop at this point."
@@ -131,7 +131,7 @@ if [ \$simdone == "0" ]; then
     echo "Restart #: " \$(( \$restart_no+1 ))
     echo "Log file: " \$log_file
     echo \$(date) > \$log_file
-    mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle cycles=$cycles save_frequency=$save_frequency \
+    mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle period=$period cycles=$cycles save_frequency=$save_frequency \
            mesh_name=$casename &>> \$log_file
   fi
   echo \$(date) >> \$log_file
