@@ -9,13 +9,8 @@ _krylov_solver=dict(
 
 components = [str(x) for x in range(3)]
 
-def eigenstate(A):
-    """Eigenvalues and eigenprojectors of the 3x3 (real-valued) tensor A.
-    Provides the spectral decomposition A = sum_{a=0}^{2} λ_a * E_a
-    with eigenvalues λ_a and their associated eigenprojectors E_a = n_a^R x n_a^L
-    ordered by magnitude.
-    The eigenprojectors of eigenvalues with multiplicity n are returned as 1/n-fold projector.
-    Note: Tensor A must not have complex eigenvalues!
+def eigenstate(A, return_vector=False):
+    """Eigenvalues of the 3x3 (real-valued) tensor A.
     """
     eps = 1.0e-10
     #
@@ -43,12 +38,17 @@ def eigenstate(A):
     val0 = q + p * ufl.cos(phi + 2 / 3 * ufl.pi)  # low
     val1 = q + p * ufl.cos(phi + 4 / 3 * ufl.pi)  # middle
     val2 = q + p * ufl.cos(phi)  # high
-
-    E0 = ufl.diff(val0, A).T
-    E1 = ufl.diff(val1, A).T
-    E2 = ufl.diff(val2, A).T
-    #
-    return val2, E0
+    
+    if return_vector:
+        assert len(set([val0,val1,val2]))==3, "Eigenvalues are not distinct! Use a different method."
+        lhs = A-val0*Identity(3)    
+        #the cross product of any two linearly independent rows gives the eigenvector as long as the eigenvalues are distinct
+        E0_ = ufl.cross(lhs[0,:], lhs[1,:]) 
+        #normalize it
+        E0 = E0_ / ufl.abs(E0_[0]**2+E0_[1]**2+E0_[2]**2)
+        return E0
+    else: 
+        return val2
 
 def setup_ftle(mesh, V, u, dt):
     #get the trajectories
@@ -60,12 +60,12 @@ def setup_ftle(mesh, V, u, dt):
         return F.T*F
     #forward problem
     C_ = C(u)
-    vals, _ = eigenstate(C_)
+    vals = eigenstate(C_)
     #max_eig = project(vals,CG1)
     ftLe_forward = utilities.CG1Function(1/dt * ln(vals**(1/2)), mesh, method=_krylov_solver, name="ftLe_forward")
     #backward problem
     Cb_ = C_b(u)
-    vals_b, _ = eigenstate(Cb_)
+    vals_b = eigenstate(Cb_)
     #max_eig_b = project(vals_b,CG1)
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=_krylov_solver, name="ftLe_backward")
     ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=_krylov_solver, name="ftLe_intersect")
@@ -87,7 +87,7 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     _grad_sig  = as_vector([grad_sig[ui] for ui in components])
     hess = grad(_grad_sig) #ufl Hessian matrix DG0
     #get minimum eigenvector
-    _, e_min_DG0 = eigenstate(hess) #the Hessian should always have real eigenvalues for any real function such as the ftle field
+    e_min_DG0 = eigenstate(hess, return_vector=True) #the Hessian should always have real eigenvalues for any real function such as the ftle field
     e_min = utilities.CG1Function(e_min_DG0, mesh, method=_krylov_solver, name="e_min") #project to CG1
     e_min()
     #get the minima
