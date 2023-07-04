@@ -88,10 +88,13 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     hess = grad(_grad_sig) #ufl Hessian matrix DG0
     #get minimum eigenvector
     e_min_DG0 = eigenstate(hess, return_vector=True) #the Hessian should always have real eigenvalues for any real function such as the ftle field
-    e_min = utilities.CG1Function(e_min_DG0, mesh, method=_krylov_solver, name="e_min") #project to CG1
-    e_min()
+    e_min = {ui:utilities.CG1Function(e_min_DG0, mesh, method=_krylov_solver, name="e_min") for ui in components} #project to CG1
+    e_min['0']()
+    e_min['1']()
+    e_min['2']()
+    _e_min = as_vector([e_min[ui] for ui in components])
     #get the minima
-    lcs = utilities.CG1Function(inner(grad_sig, e_min), mesh, method=_krylov_solver, name="lcs") #scalar-valued    
+    lcs = utilities.CG1Function(inner(_grad_sig, _e_min), mesh, method=_krylov_solver, name="lcs") #scalar-valued    
     lcs()
     if MPI.rank(MPI.comm_world) == 0:
         print('Finished finding total LCS in %f s'%t.elapsed()[0])
