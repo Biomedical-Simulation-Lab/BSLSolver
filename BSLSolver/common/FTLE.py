@@ -83,12 +83,14 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     grad_sig['0'](ftLe_backward)
     grad_sig['1'](ftLe_backward)
     grad_sig['2'](ftLe_backward)
-    '''
+    
     #get Hessian matrix of backward (attracting ftle)
     _grad_sig  = as_vector([grad_sig[ui] for ui in components])
     hess = grad(_grad_sig) #ufl Hessian matrix DG0
     #get minimum eigenvector
     e_min_DG0 = eigenstate(hess, return_vector=True) #the Hessian should always have real eigenvalues for any real function such as the ftle field
+    File("emin.pvd") << e_min_DG0
+    '''
     e_min = {ui:utilities.CG1Function(e_min_DG0[i], mesh, method=_krylov_solver, name='e_min_'+ui) for i, ui in enumerate(components)} #project to CG1
     e_min['0']()
     e_min['1']()
@@ -107,7 +109,6 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
         file.write(ftLe_backward, float(tstep))
         file.write(ftLe_intersect, float(tstep))
         #file.write(lcs, float(tstep))
-
 
 
 
