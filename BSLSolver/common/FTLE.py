@@ -45,7 +45,7 @@ def eigenstate(A, return_vector=False):
         #the cross product of any two linearly independent rows gives the eigenvector as long as the eigenvalues are distinct
         E0_ = ufl.cross(lhs[0,:], lhs[1,:]) 
         #normalize it
-        E0 = E0_ / ufl.abs(E0_[0]**2+E0_[1]**2+E0_[2]**2)
+        E0 = E0_ / ufl.Abs(E0_[0]**2+E0_[1]**2+E0_[2]**2)
         return E0
     else: 
         return val2
