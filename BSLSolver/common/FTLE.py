@@ -83,6 +83,7 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     grad_sig['0'](ftLe_backward)
     grad_sig['1'](ftLe_backward)
     grad_sig['2'](ftLe_backward)
+    '''
     #get Hessian matrix of backward (attracting ftle)
     _grad_sig  = as_vector([grad_sig[ui] for ui in components])
     hess = grad(_grad_sig) #ufl Hessian matrix DG0
@@ -94,7 +95,6 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     e_min['2']()
     _e_min = as_vector([e_min[ui] for ui in components])
     #get the minima
-    '''
     lcs = utilities.CG1Function(dot(_grad_sig, _e_min), mesh, method=_krylov_solver, name="lcs") #scalar-valued    
     lcs()
     '''
