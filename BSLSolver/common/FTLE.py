@@ -40,7 +40,7 @@ def eigenstate(A, return_vector=False):
     val2 = q + p * ufl.cos(phi)  # high
     
     if return_vector:
-        ufl_assert(len(set([val0,val1,val2]))==3, "Eigenvalues are not distinct! Use a different method.")
+        ufl.ufl_assert(len(set([val0,val1,val2]))==3, "Eigenvalues are not distinct! Use a different method.")
         lhs = val0*Identity(3)-A    
         #the cross product of any two linearly independent rows gives the eigenvector as long as the eigenvalues are distinct
         E0_ = ufl.cross(lhs[0,:], lhs[1,:]) 
