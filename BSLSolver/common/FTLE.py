@@ -81,7 +81,7 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     grad_sig['0'](ftLe_backward)
     grad_sig['1'](ftLe_backward)
     grad_sig['2'](ftLe_backward)
-    
+    parameters["form_compiler"]["quadrature_degree"]=4
     #get Hessian matrix of backward (attracting ftle)
     _grad_sig  = as_vector([grad_sig[ui] for ui in components])
     #rows and columns mixed up here but it is symmetric so that shouldn't matter (need to force symmetry?)
