@@ -71,7 +71,7 @@ def setup_ftle(mesh, V, u, dt):
     grad_sig = {ui: utilities.GradFunction(ftLe_backward, FunctionSpace(mesh, 'CG', 1), i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
     return ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig
 
-def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_ff, ftle_fb, ftle_fi, ftle_lcs, tstep):
+def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, mesh, ftle_ff, ftle_fb, ftle_fi, ftle_lcs, tstep):
     t = Timer()
     ftLe_forward()
     ftLe_backward()
