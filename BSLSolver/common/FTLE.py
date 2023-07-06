@@ -84,18 +84,11 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     parameters["form_compiler"]["quadrature_degree"]=4
     #get Hessian matrix of backward (attracting ftle)
     _grad_sig  = as_vector([grad_sig[ui] for ui in components])
+    hess = grad(_grad_sig) #ufl Hessian matrix DG0
     #rows and columns mixed up here but it is symmetric so that shouldn't matter (need to force symmetry?)
-    _hess_0 = {ui:utilities.GradFunction(grad_sig['0'], FunctionSpace(mesh, 'CG', 1), i=i, name='d2sigdxd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
-    _hess_1 = {ui:utilities.GradFunction(grad_sig['1'], FunctionSpace(mesh, 'CG', 1), i=i, name='d2sigdyd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
-    _hess_2 = {ui:utilities.GradFunction(grad_sig['2'], FunctionSpace(mesh, 'CG', 1), i=i, name='d2sigdzd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
-    for i, ui in enumerate(components):
-        _hess_0[ui](grad_sig['0'])
-        _hess_1[ui](grad_sig['1'])
-        _hess_2[ui](grad_sig['2'])
-    _hess_ = as_matrix([[_hess_0['0'],_hess_0['1'],_hess_0['2']],[_hess_0['1'],_hess_1['1'],_hess_1['2']], [_hess_0['2'],_hess_1['2'],_hess_2['2']]])
-
+    _hess = as_matrix([[hess[0,0], hess[0,1], hess[0,2]], [hess[0,1], hess[1,1], hess[1,2]], [hess[0,2], hess[1,2], hess[2,2]]])
     #get minimum eigenvector
-    e_min_DG0 = eigenstate(_hess_, return_vector=True) #the Hessian should always have real eigenvalues for any real function such as the ftle field
+    e_min_DG0 = eigenstate(_hess, return_vector=True) #the Hessian should always have real eigenvalues for any real function such as the ftle field
     e_min = {ui:utilities.CG1Function(e_min_DG0[i], mesh, method=_krylov_solver, name='e_min_'+ui) for i, ui in enumerate(components)} #project to CG1
     e_min['0']()
     e_min['1']()
@@ -112,6 +105,8 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     ftle_ff.parameters.update({"rewrite_function_mesh": False})
     ftle_fb.parameters.update({"rewrite_function_mesh": False})
     ftle_fi.parameters.update({"rewrite_function_mesh": False})
+    ftle_lcs.parameters.update({"rewrite_function_mesh": False})
+
     ftle_ff.write(ftLe_forward, float(tstep))
     ftle_fb.write(ftLe_backward, float(tstep))
     ftle_fi.write(ftLe_intersect, float(tstep))
