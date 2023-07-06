@@ -68,7 +68,7 @@ def setup_ftle(mesh, V, u, dt):
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=_krylov_solver, name="ftLe_backward")
     ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=_krylov_solver, name="ftLe_intersect")
     #set up a library of gradients of sigma (backward)
-    grad_sig = {ui: utilities.GradFunction(ftLe_backward, FunctionSpace(m, 'CG', 1), i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
+    grad_sig = {ui: utilities.GradFunction(ftLe_backward, FunctionSpace(mesh, 'CG', 1), i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
     return ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig
 
 def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_ff, ftle_fb, ftle_fi, ftle_lcs, tstep):
@@ -85,9 +85,9 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     #get Hessian matrix of backward (attracting ftle)
     _grad_sig  = as_vector([grad_sig[ui] for ui in components])
     #rows and columns mixed up here but it is symmetric so that shouldn't matter (need to force symmetry?)
-    _hess_0 = {ui:utilities.GradFunction(grad_sig['0'], FunctionSpace(m, 'CG', 1), i=i, name='d2sigdxd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
-    _hess_1 = {ui:utilities.GradFunction(grad_sig['1'], FunctionSpace(m, 'CG', 1), i=i, name='d2sigdyd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
-    _hess_2 = {ui:utilities.GradFunction(grad_sig['2'], FunctionSpace(m, 'CG', 1), i=i, name='d2sigdzd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
+    _hess_0 = {ui:utilities.GradFunction(grad_sig['0'], FunctionSpace(mesh, 'CG', 1), i=i, name='d2sigdxd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
+    _hess_1 = {ui:utilities.GradFunction(grad_sig['1'], FunctionSpace(mesh, 'CG', 1), i=i, name='d2sigdyd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
+    _hess_2 = {ui:utilities.GradFunction(grad_sig['2'], FunctionSpace(mesh, 'CG', 1), i=i, name='d2sigdzd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
     for i, ui in enumerate(components):
         _hess_0[ui](grad_sig['0'])
         _hess_1[ui](grad_sig['1'])
