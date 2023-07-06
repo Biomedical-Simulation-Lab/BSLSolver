@@ -1,6 +1,7 @@
 import ufl
 from dolfin import *
 from oasis.common import utilities
+import petsc4py as p4p
 import warnings
 
 _krylov_solver=dict(
@@ -39,14 +40,11 @@ def eigenstate(A, return_vector=False):
     val1 = q + p * ufl.cos(phi + 4 / 3 * ufl.pi)  # middle
     val2 = q + p * ufl.cos(phi)  # high
     
-    if return_vector:
-        ufl.ufl_assert(len(set([val0,val1,val2]))==3, "Eigenvalues are not distinct! Use a different method.")
-        lhs = val0*Identity(3)-A    
-        #the cross product of any two linearly independent rows gives the eigenvector as long as the eigenvalues are distinct
-        E0_ = ufl.cross(lhs[0,:], lhs[1,:]) 
-        #normalize it
-        E0 = E0_ / ufl.sqrt(E0_[0]**2+E0_[1]**2+E0_[2]**2)
-        return E0
+    if return_vector:   
+        h = A-val0*ufl.Identity(3)
+        v = ufl.cross(h[1,:], h[2,:])
+        n = ufl.sqrt(v[0]**2+v[1]**2+v[2]**2)
+        return v/n
     else: 
         return val2
 
@@ -70,10 +68,10 @@ def setup_ftle(mesh, V, u, dt):
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=_krylov_solver, name="ftLe_backward")
     ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=_krylov_solver, name="ftLe_intersect")
     #set up a library of gradients of sigma (backward)
-    grad_sig = {ui: utilities.GradFunction(ftLe_backward, V, i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
+    grad_sig = {ui: utilities.GradFunction(ftLe_backward, FunctionSpace(m, 'CG', 1), i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
     return ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig
 
-def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f, tstep):
+def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_ff, ftle_fb, ftle_fi, ftle_lcs, tstep):
     t = Timer()
     ftLe_forward()
     ftLe_backward()
@@ -86,11 +84,18 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     
     #get Hessian matrix of backward (attracting ftle)
     _grad_sig  = as_vector([grad_sig[ui] for ui in components])
-    hess = grad(_grad_sig) #ufl Hessian matrix DG0
+    #rows and columns mixed up here but it is symmetric so that shouldn't matter (need to force symmetry?)
+    _hess_0 = {ui:utilities.GradFunction(grad_sig['0'], FunctionSpace(m, 'CG', 1), i=i, name='d2sigdxd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
+    _hess_1 = {ui:utilities.GradFunction(grad_sig['1'], FunctionSpace(m, 'CG', 1), i=i, name='d2sigdyd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
+    _hess_2 = {ui:utilities.GradFunction(grad_sig['2'], FunctionSpace(m, 'CG', 1), i=i, name='d2sigdzd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)}
+    for i, ui in enumerate(components):
+        _hess_0[ui](grad_sig['0'])
+        _hess_1[ui](grad_sig['1'])
+        _hess_2[ui](grad_sig['2'])
+    _hess_ = as_matrix([[_hess_0['0'],_hess_0['1'],_hess_0['2']],[_hess_0['1'],_hess_1['1'],_hess_1['2']], [_hess_0['2'],_hess_1['2'],_hess_2['2']]])
+
     #get minimum eigenvector
-    e_min_DG0 = eigenstate(hess, return_vector=True) #the Hessian should always have real eigenvalues for any real function such as the ftle field
-    File("emin.pvd") << e_min_DG0
-    '''
+    e_min_DG0 = eigenstate(_hess_, return_vector=True) #the Hessian should always have real eigenvalues for any real function such as the ftle field
     e_min = {ui:utilities.CG1Function(e_min_DG0[i], mesh, method=_krylov_solver, name='e_min_'+ui) for i, ui in enumerate(components)} #project to CG1
     e_min['0']()
     e_min['1']()
@@ -99,16 +104,18 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     #get the minima
     lcs = utilities.CG1Function(dot(_grad_sig, _e_min), mesh, method=_krylov_solver, name="lcs") #scalar-valued    
     lcs()
-    '''
+
     if MPI.rank(MPI.comm_world) == 0:
         print('Finished finding total LCS in %f s'%t.elapsed()[0])
     #now just need to print to xdmffile
-    with ftle_f as file:
-        file.parameters.update({"rewrite_function_mesh": False})
-        file.write(ftLe_forward, float(tstep))
-        file.write(ftLe_backward, float(tstep))
-        file.write(ftLe_intersect, float(tstep))
-        #file.write(lcs, float(tstep))
+
+    ftle_ff.parameters.update({"rewrite_function_mesh": False})
+    ftle_fb.parameters.update({"rewrite_function_mesh": False})
+    ftle_fi.parameters.update({"rewrite_function_mesh": False})
+    ftle_ff.write(ftLe_forward, float(tstep))
+    ftle_fb.write(ftLe_backward, float(tstep))
+    ftle_fi.write(ftLe_intersect, float(tstep))
+    ftle_lcs.write(lcs, float(tstep))
 
 
 

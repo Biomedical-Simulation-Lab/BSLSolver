@@ -555,15 +555,22 @@ def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
     if MPI.rank(MPI.comm_world) == 0:
         if not path.exists(ftle_path):
             makedirs(ftle_path)
-    ftle_f = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_from_tstep{}.xdmf'.format(tstep))
-    ftle_f.parameters["flush_output"] = True
+    ftle_ff = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_f_from_tstep{}.xdmf'.format(tstep))
+    ftle_ff.parameters["flush_output"] = True
+    ftle_fb = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_b_from_tstep{}.xdmf'.format(tstep))
+    ftle_fb.parameters["flush_output"] = True
+    ftle_fi = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_i_from_tstep{}.xdmf'.format(tstep))
+    ftle_fi.parameters["flush_output"] = True
+    ftle_lcs = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_lcs_from_tstep{}.xdmf'.format(tstep))
+    ftle_lcs.parameters["flush_output"] = True
+
     ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig = FTLE.setup_ftle(mesh, V, u_, NS_namespace['dt'])
 
     return dict(hdf5_link=h5stdio,
                 files=files, #inout_area=NS_parameters['inout_area'],
                 final_time=NS_namespace['T'], current_cycle=0, 
                 timesteps=NS_namespace['time_steps'], total_cycles=NS_namespace['no_of_cycles'],
-                timestep_cpu_time=0, current_time=time.time(), cpu_time=0, ftle_f=ftle_f, ftLe_backward=ftLe_backward, ftLe_forward=ftLe_forward, ftLe_intersect=ftLe_intersect, grad_sig)
+                timestep_cpu_time=0, current_time=time.time(), cpu_time=0, ftle_ff=ftle_ff, ftle_fb=ftle_fb, ftle_fi=ftle_fi, ftle_lcs=ftle_lcs, ftLe_backward=ftLe_backward, ftLe_forward=ftLe_forward, ftLe_intersect=ftLe_intersect)
 
 #///////////////////////////////////////////////////////////////
 def beta(err, p):
@@ -586,7 +593,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
                   dump_stats, newfolder, id_in, files, id_out, inout_area, subdomain_data,
                   normals, store_data, hdf5_link, NS_expressions, current_cycle,
                   total_cycles, area_ratio, t, dS, timestep_cpu_time, current_time, 
-                  cpu_time, final_time, timesteps, not_zero_pressure_outlets,ftle_f, ftLe_forward, ftLe_backward, ftLe_intersect, grad_sig, **NS_namespace):
+                  cpu_time, final_time, timesteps, not_zero_pressure_outlets,ftle_ff, ftle_fb, ftle_fi, ftle_lcs, ftLe_forward, ftLe_backward, ftLe_intersect, **NS_namespace):
 
     # update the current cycles
     current_cycle = int(tstep / timesteps)
@@ -694,7 +701,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
             h5stdio.Save( current_cycle, t, tstep, Q_ins, Q_outs, NS_parameters, 'Step-%06d'%tstep, q_) #multiple nodes?
             #save ftle field
             if NS_parameters['save_ftle']:
-                FTLE.get_ftle(ftLe_forward, ftLe_backward, ftLe_intersect, grad_sig, mesh, ftle_f, tstep)
+                FTLE.get_ftle(ftLe_forward, ftLe_backward, ftLe_intersect, grad_sig, mesh, ftle_ff, ftle_fb, ftle_fi, ftle_lcs, tstep)
             if mpi_rank == 0:
                 h5stdio.SaveXDMF( os.path.join(NS_parameters['folder'], NS_parameters['case_fullname']+'.xdmf') )
 
