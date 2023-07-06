@@ -570,7 +570,7 @@ def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
                 files=files, #inout_area=NS_parameters['inout_area'],
                 final_time=NS_namespace['T'], current_cycle=0, 
                 timesteps=NS_namespace['time_steps'], total_cycles=NS_namespace['no_of_cycles'],
-                timestep_cpu_time=0, current_time=time.time(), cpu_time=0, ftle_ff=ftle_ff, ftle_fb=ftle_fb, ftle_fi=ftle_fi, ftle_lcs=ftle_lcs, ftLe_backward=ftLe_backward, ftLe_forward=ftLe_forward, ftLe_intersect=ftLe_intersect)
+                timestep_cpu_time=0, current_time=time.time(), cpu_time=0, ftle_ff=ftle_ff, ftle_fb=ftle_fb, ftle_fi=ftle_fi, ftle_lcs=ftle_lcs, ftLe_backward=ftLe_backward, ftLe_forward=ftLe_forward, ftLe_intersect=ftLe_intersect, grad_sig=grad_sig)
 
 #///////////////////////////////////////////////////////////////
 def beta(err, p):
@@ -593,7 +593,7 @@ def temporal_hook(u_, p_, p, q_, V, mesh, tstep, compute_flux,
                   dump_stats, newfolder, id_in, files, id_out, inout_area, subdomain_data,
                   normals, store_data, hdf5_link, NS_expressions, current_cycle,
                   total_cycles, area_ratio, t, dS, timestep_cpu_time, current_time, 
-                  cpu_time, final_time, timesteps, not_zero_pressure_outlets,ftle_ff, ftle_fb, ftle_fi, ftle_lcs, ftLe_forward, ftLe_backward, ftLe_intersect, **NS_namespace):
+                  cpu_time, final_time, timesteps, not_zero_pressure_outlets,ftle_ff, ftle_fb, ftle_fi, ftle_lcs, grad_sig, ftLe_forward, ftLe_backward, ftLe_intersect, **NS_namespace):
 
     # update the current cycles
     current_cycle = int(tstep / timesteps)
