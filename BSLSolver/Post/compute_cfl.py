@@ -78,8 +78,8 @@ def compute_local_cfl(ids, h5_files, mesh_dx, cells, dt):
                     + numpy.mean(lu[ptids,2]) / mesh_dx[j][2])*dt
             #assign a cfl for each point in cell, making sure it is the maximum of all the cells that the point is part of
             for idx in ids:
-            	if cfl[j]>cfl_nodal[idx]:
-            		cfl_nodal[idx]=cfl[j]
+                if cfl[j]>cfl_nodal[idx]:
+                    cfl_nodal[idx]=cfl[j]
         hw.close()
         
         # write to h5
@@ -92,14 +92,14 @@ def compute_local_cfl(ids, h5_files, mesh_dx, cells, dt):
 
 def write_xdmf(folder, mesh_file, period, h5_files):
 
-	file_count = len(h5_files)
-	
-	with h5py.File(mesh_file, 'r') as hf:
+    file_count = len(h5_files)
+
+    with h5py.File(mesh_file, 'r') as hf:
         points = np.array(hf['Mesh']['coordinates'])
         cells = np.array(hf['Mesh']['topology'])
 
-	xdmffile = folder +'/cfl.xdmf'
-        xdmftext =  '''<?xml version="1.0"?>
+    xdmffile = folder +'/cfl.xdmf'
+    xdmftext =  '''<?xml version="1.0"?>
 <!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
 <Xdmf Version="3.0" xmlns:xi="http://www.w3.org/2001/XInclude">
   <Domain>
@@ -114,11 +114,11 @@ def write_xdmf(folder, mesh_file, period, h5_files):
       </Grid>
     </Grid>
 '''%(cells.shape[0], cells.shape[0], mesh_file.name, len(points), mesh_file.name)
-        f = open(xdmffile, 'w')
-        f.write(xdmftext)
-        f.close
-        
-        xml_node_grid_vector_tmp = '''    <Grid>
+    f = open(xdmffile, 'w')
+    f.write(xdmftext)
+    f.close
+
+    xml_node_grid_vector_tmp = '''    <Grid>
       <xi:include xpointer="xpointer(//Grid[@Name=&quot;TimeSeries&quot;]/Grid[1]/*[self::Topology or self::Geometry])" />
       <Time Value="%%f" />
       <Attribute Name="cfl" AttributeType="Vector" Center="Node">
@@ -126,14 +126,13 @@ def write_xdmf(folder, mesh_file, period, h5_files):
       </Attribute>
     </Grid>
 '''%(len(points), len(points))
-	
-	f = open(xdmffile, 'a')
-	for i in range(file_count):
-		cfl_file = h5_files[i].replace('_up.h5', '_cfl.h5')
-		time_ = float(cfl_file.stem.split('_t=')[1].split('_ts')[0]) / 1000.0
-		text = xml_node_grid_vector_tmp%(time_, cfl_file)
+    f = open(xdmffile, 'a')
+    for i in range(file_count):
+        cfl_file = h5_files[i].replace('_up.h5', '_cfl.h5')
+        time_ = float(cfl_file.stem.split('_t=')[1].split('_ts')[0]) / 1000.0
+        text = xml_node_grid_vector_tmp%(time_, cfl_file)
         f.write(text)
-	f.close
+    f.close
 
 ################################################################
 def compute_cfl(input_folder, interval, nproc, period):
