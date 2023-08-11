@@ -84,7 +84,7 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     parameters["form_compiler"]["quadrature_degree"]=4
     #get Hessian matrix of backward (attracting ftle)
     _grad_sig  = as_vector([grad_sig[ui] for ui in components])
-    hess = grad(_grad_sig) #ufl Hessian matrix DG0
+    hess = grad(grad(ftLe_backward)) #
     #rows and columns mixed up here but it is symmetric so that shouldn't matter (need to force symmetry?)
     _hess = as_matrix([[hess[0,0], hess[0,1], hess[0,2]], [hess[0,1], hess[1,1], hess[1,2]], [hess[0,2], hess[1,2], hess[2,2]]])
     #get minimum eigenvector

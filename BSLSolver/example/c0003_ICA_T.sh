@@ -41,7 +41,7 @@ set +a
 ###IF YOU WANT THE NORMAL OASIS OUTPUT, IT IS NORMALLY SUPPRESSED!!###
 #You can get the normal output if you add the following to your variables list
 #save_step=1000 #default is 100000
-#checkpoint=500 #Mehdi checkpoints at every tstep
+#checkpoint=500 #default is 500
 
 #Run the submission script to Niagara
 #"$@" just includes any additional keyword arguments passed when you run this script (eg. the command "./in_default.sh hello" would pass the variable hello to this script, and it would be then passed to the solver.sh file subsequently, and could be accessed with $1)

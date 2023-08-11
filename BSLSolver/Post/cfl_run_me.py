@@ -33,7 +33,7 @@ def get_cfl_job_cmd(input_folders, interval, ncores, detailed):
     return cmdtxt
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='CFL Calculation Job - October 2020')
+    parser = argparse.ArgumentParser(description='CFL Calculation Job')
     parser.add_argument('result_folder', metavar='folder', nargs='+',
                         help='the folder where wss h5 files have been stored.')
     parser.add_argument('-n', '--ncores', dest='ncores', type=int, default=multiprocessing.cpu_count()*2,

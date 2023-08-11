@@ -7,8 +7,8 @@
 #  distribution of it is not allowed in any form.
 # ///////////////////////////////////////////////////////////////
 
-__author__ = "Mehdi Najafi <mnajafi@sharif.edu>"
-__date__ = "2008-02-11"
+__author__ = "Mehdi Najafi <mnajafi@sharif.edu>" #altered Anna Haley 2023
+__date__ = "2008-02-11" #2023
 __copyright__ = "Copyright (C) 2008 " + __author__
 __license__  = "Private; to be obtained directly from the author."
 
@@ -20,24 +20,8 @@ import h5py, glob
 import numpy
 import gc
 import job_utils
-from multiprocessing import sharedctypes
 import multiprocessing
 
-################################################################
-shared_vars_pool={}
-def create_shared_array(names, shape, dtype='d'):
-    name_list = names.split(',')
-    sz = int(numpy.prod(shape))
-    print ('Allocating %dx %5.2f MB = %5.2f MB of memory ... '%(len(name_list),sz*8/(1024*1024),len(name_list)*sz*8/(1024*1024)) , end='', flush=True)
-    for name in name_list:
-        # shared_vars_pool[name+'_var'] = numpy.ctypeslib.as_ctypes(numpy.zeros(shape))
-        # shared_vars_pool[name] = multiprocessing.sharedctypes.RawArray(shared_vars_pool[name+'_var']._type_, shared_vars_pool[name+'_var'])
-        shared_vars_pool[name] = multiprocessing.sharedctypes.RawArray(dtype, sz)
-        shared_vars_pool[name+'_shape'] = shape
-    print('done.', flush=True)
-def get_shared_var(name):
-    #return numpy.ctypeslib.as_array(shared_vars_pool[name+'_var'])
-    return numpy.frombuffer(shared_vars_pool[name]).reshape(shared_vars_pool[name+'_shape'])
 ################################################################
 # get the element dimensions
 #  dt*(u/dx+v/dy+w/dz)<=1
@@ -72,9 +56,7 @@ def get_mesh_deltas(mesh_h5_filename):
     h5py.File(mesh_h5_filename,'a').create_dataset("Mesh/elem_dx", dtype=numpy.float64, data=mesh_dx, compression="gzip")
     return mesh_dx, cells
 
-################################################################
-# get the element dimensions
-def compute_local_u_dx(ids, h5_files, mesh_dx, cells, write_each_timestep=0):
+def compute_local_cfl(ids, h5_files, mesh_dx, cells, dt):
     if len(ids)==1:
         print ('    reading', len(ids), 'file:', ids, h5_files[ids[0]], flush=True)
     else:
@@ -82,35 +64,79 @@ def compute_local_u_dx(ids, h5_files, mesh_dx, cells, write_each_timestep=0):
 
     number_of_cells = cells.shape[0]
 
-    # get the shared variable
-    u_dx_max = get_shared_var('u_dx_max')
-
     # loop over files
     for i in ids:
         hw = h5py.File(h5_files[i], 'r')
         lu = numpy.asarray(hw['/Solution/u'])
-
-        u_dx = numpy.zeros((number_of_cells,4), dtype=numpy.float64)
+		
+        cfl = numpy.zeros(number_of_cells, dtype=numpy.float64)
+        cfl_nodal = numpy.zeros(len(lu), dtype=numpy.float64)
         for j in range(number_of_cells):
-            ids = cells[j]
-            u_dx[j] = numpy.mean(lu[ids,0]) / mesh_dx[j][0] \
-                    + numpy.mean(lu[ids,1]) / mesh_dx[j][1] \
-                    + numpy.mean(lu[ids,2]) / mesh_dx[j][2]
+            ptids = cells[j]
+            cfl[j] = (numpy.mean(lu[ptids,0]) / mesh_dx[j][0] \
+                    + numpy.mean(lu[ptids,1]) / mesh_dx[j][1] \
+                    + numpy.mean(lu[ptids,2]) / mesh_dx[j][2])*dt
+            #assign a cfl for each point in cell, making sure it is the maximum of all the cells that the point is part of
+            for idx in ids:
+            	if cfl[j]>cfl_nodal[idx]:
+            		cfl_nodal[idx]=cfl[j]
         hw.close()
+        
+        # write to h5
+        output_filename = h5_files[i].replace('_up.h5', '_cfl.h5')
+        print ('Writing data to %s ...'%(output_filename), end='')
+        hf = h5py.File(output_filename, 'w')
+        hf.create_dataset("cfl", dtype=numpy.float64, data=cfl_nodal, compression="gzip")
+        hf.close()
+        print (' done.')
 
-        u_dx_max[i] = numpy.max(u_dx)
+def write_xdmf(folder, mesh_file, period, h5_files):
 
-        if write_each_timestep:
-            # write to h5
-            output_filename = h5_files[i].replace('_up.h5', '_u_dx.h5')
-            print ('Writing data to %s ...'%(output_filename), end='')
-            hf = h5py.File(output_filename, 'w')
-            hf.create_dataset("Computed/u_dx", dtype=numpy.float64, data=u_dx, compression="gzip")
-            hf.close()
-            print (' done.')
+	file_count = len(h5_files)
+	
+	with h5py.File(mesh_file, 'r') as hf:
+        points = np.array(hf['Mesh']['coordinates'])
+        cells = np.array(hf['Mesh']['topology'])
+
+	xdmffile = folder +'/cfl.xdmf'
+        xdmftext =  '''<?xml version="1.0"?>
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
+<Xdmf Version="3.0" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <Domain>
+    <Grid Name="TimeSeries" GridType="Collection" CollectionType="Temporal">
+      <Grid Name="mesh" GridType="Uniform">
+        <Topology NumberOfElements="%d" TopologyType="Tetrahedron" NodesPerElement="4">
+          <DataItem Dimensions="%d 4" NumberType="UInt" Format="HDF">%s:/Mesh/topology</DataItem>
+        </Topology>
+        <Geometry GeometryType="XYZ">
+          <DataItem Dimensions="%d 3" Format="HDF">%s:/Mesh/coordinates</DataItem>
+        </Geometry>
+      </Grid>
+    </Grid>
+'''%(cells.shape[0], cells.shape[0], mesh_file.name, len(points), mesh_file.name)
+        f = open(xdmffile, 'w')
+        f.write(xdmftext)
+        f.close
+        
+        xml_node_grid_vector_tmp = '''    <Grid>
+      <xi:include xpointer="xpointer(//Grid[@Name=&quot;TimeSeries&quot;]/Grid[1]/*[self::Topology or self::Geometry])" />
+      <Time Value="%%f" />
+      <Attribute Name="cfl" AttributeType="Vector" Center="Node">
+        <DataItem Dimensions="%d 1" Format="HDF">%%s:/cfl</DataItem>
+      </Attribute>
+    </Grid>
+'''%(len(points), len(points))
+	
+	f = open(xdmffile, 'a')
+	for i in range(file_count):
+		cfl_file = h5_files[i].replace('_up.h5', '_cfl.h5')
+		time_ = float(cfl_file.stem.split('_t=')[1].split('_ts')[0]) / 1000.0
+		text = xml_node_grid_vector_tmp%(time_, cfl_file)
+        f.write(text)
+	f.close
 
 ################################################################
-def compute_cfl(input_folder, interval, nproc, period, detailed):
+def compute_cfl(input_folder, interval, nproc, period):
     pos = -2 if (input_folder[-1] == '/') else -1
     folder_itself = input_folder.split('/')[pos]
     timesteps = int(folder_itself.split("_ts")[-1].split("_cy")[0])
@@ -118,42 +144,27 @@ def compute_cfl(input_folder, interval, nproc, period, detailed):
     mesh_h5_filename, case_folder, case_name = job_utils.get_case_mesh_filename(input_folder)
 
     if not os.path.exists(mesh_h5_filename):
-        print ('No mesh file found: %s \nYou may running this script from an incorrect folder.\n'%mesh_filename)
+        print ('No mesh file found: %s \nYou may running this script from an incorrect folder.\n'%mesh_h5_filename)
         exit(1)
-    print ('Looking for mesh file:', mesh_h5_filename, ' and loading volume mesh (/Mesh/coordiantes, /Mesh/topology).')
+    print ('Looking for mesh file:', mesh_h5_filename, ' and loading volume mesh (/Mesh/coordinates, /Mesh/topology).')
     print ('Computing mesh element length scales.')
     mesh_dx, mesh_cells = get_mesh_deltas(mesh_h5_filename)
 
     print ('Looking inside', input_folder, '...')
 
     h5_files = glob.glob(input_folder+"/*_up.h5")
-    if not h5_files:
-        print ('No h5 file found in', input_folder+'. Run the solver and run this script after it finished.\n')
-        exit(1)
     # sort the files according to the simulation time
     h5_files = sorted(h5_files, key=lambda N: int(N.split("ts=")[1].split("_up.h5")[0]))
     h5_files = h5_files[0:len(h5_files):interval]
     file_count = len(h5_files)
+    
+    write_xdmf(input_folder, mesh_h5_filename, period, h5_files)
 
     print ('   found', file_count, 'up files for', mesh_cells.shape[0], 'elements.')
 
     # determine the time increment based on the number of samples and the corresponding FFT frequencies
     dt = period/timesteps
-
-    # outfile = open(input_folder+'/%s_mesh_dx.txt'%(folder_itself), 'w')
-    # for j in range(mesh_cells.shape[0]):
-    #     outfile.write('%f\n'%(mesh_dx[j,]))
-    # outfile.close()
-
-     # write the header to output in tecplot format
-    output_filename = input_folder+'/'+'%s_max_cfl.tec'%(folder_itself)
-    print ('Writing data to %s ...'%(output_filename))
-    outfile = open(output_filename, 'w')
-    outfile.write('VARIABLES=timestep,t,CFL\nZONE I=%d'%(file_count))
-    outfile.close()
     
-    # create shared arrays
-    create_shared_array('u_dx_max', (file_count))
     # make group and divide the procedure
     step = max(int(file_count / nproc), 1)
     rng = list(range(0,file_count))
@@ -163,43 +174,18 @@ def compute_cfl(input_folder, interval, nproc, period, detailed):
 
     p_list=[]
     for i,g in enumerate(groups):
-        pr = multiprocessing.Process(target=compute_local_u_dx, name='Process'+str(i), args=(g,h5_files,mesh_dx,mesh_cells,detailed))
+        pr = multiprocessing.Process(target=compute_local_cfl, name='Process'+str(i), args=(g,h5_files,mesh_dx,mesh_cells, dt))
         p_list.append(pr)
     for pr in p_list: pr.start()
     # Wait for all the processes to finish
     for pr in p_list: pr.join()
-    gc.collect()
 
     print (' done.', flush=True)
 
-    u_dx_max = get_shared_var('u_dx_max')
-
-    # Now, all points are done. The output file is to be closed.
-    outfile = open(output_filename, 'a+')
-    for i in range(file_count):
-        fname = h5_files[i][h5_files[i].rfind('/'):]
-        ts = int(fname.split("_ts=")[1].split("_")[0])
-        t = float(fname.split("_t=")[1].split("_")[0])
-        outfile.write('\n%8d %14.5f % 18.12f'%(ts,t,dt*u_dx_max[i]))
-    outfile.close()
-    print (' done.')
-
 if __name__ == '__main__':
-    nargs = len(sys.argv)
-    #print('Arguments',nargs, sys.argv)
-    # get the number of CPU cores
-    if nargs > 1:
-        ncore = multiprocessing.cpu_count()
-        interval = 1
-        period = 0.951
-        detailed = 0
-        if nargs > 2:
-            period = float(sys.argv[2])
-        if nargs > 3:
-            interval = int(sys.argv[3])
-        if nargs > 4:
-            ncore = int(sys.argv[4])
-        if nargs > 5:
-            detailed = int(sys.argv[5])
-        print ( 'Performing CFL computation on %d core%s and interval of %d.'%(ncore,'s' if ncore>1 else '',interval) )
-        compute_cfl(sys.argv[1], interval, ncore, period, detailed)
+	#first argument is the results folder
+    ncore = multiprocessing.cpu_count()
+    interval = 1
+    period = float(sys.argv[2])
+    print ( 'Performing CFL computation on %d core%s and interval of %d.'%(ncore,'s' if ncore>1 else '',interval) )
+    compute_cfl(sys.argv[1], interval, ncore, period)
