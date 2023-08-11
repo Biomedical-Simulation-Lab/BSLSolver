@@ -59,6 +59,6 @@ if __name__ == '__main__':
 
     job_cmd_text = job_utils.get_job_script_header('cfl_'+'+'.join(case_names), req_time=args.required_time, nodes=1, run_on_debug=args.debug)
     job_cmd_text += get_job_env_setting()
-    job_cmd_text += get_cfl_job_cmd(args.result_folder, interval=args.interval, ncores=args.ncores, detailed=1 if args.detailed else 0)
+    job_cmd_text += get_cfl_job_cmd(args.result_folder)
 
     job_utils.submit_a_job('cfl', job_cmd_text, depend=str(args.depend) if args.depend>0 else '')
