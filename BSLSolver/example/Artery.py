@@ -244,6 +244,7 @@ def problem_parameters(commandline_kwargs, NS_parameters, **NS_namespace):
         # Parameters are in mm and ms
         NS_parameters.update(
             max_allowed_wall_time = get_cmdarg(commandline_kwargs, 'maxwtime', max_wall_time_before_being_killed),
+            killtime = get_cmdarg(commandline_kwargs, 'maxwtime', max_wall_time_before_being_killed),
             case_name = case_name,
             case_fullname = case_fullname,
             nu = get_cmdarg(commandline_kwargs, 'viscosity', 0.0035),
@@ -551,21 +552,32 @@ def pre_solve_hook(mesh, V, Q, newfolder, folder, u_, mesh_path,
         files = NS_namespace["files"]
 
     #initialize ftle output file
-    ftle_path = path.join(folder,'ftle_files')
-    if MPI.rank(MPI.comm_world) == 0:
-        if not path.exists(ftle_path):
-            makedirs(ftle_path)
-    ftle_ff = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_f_from_tstep{}.xdmf'.format(tstep))
-    ftle_ff.parameters["flush_output"] = True
-    ftle_fb = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_b_from_tstep{}.xdmf'.format(tstep))
-    ftle_fb.parameters["flush_output"] = True
-    ftle_fi = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_i_from_tstep{}.xdmf'.format(tstep))
-    ftle_fi.parameters["flush_output"] = True
-    ftle_lcs = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_lcs_from_tstep{}.xdmf'.format(tstep))
-    ftle_lcs.parameters["flush_output"] = True
+    if NS_namespace["save_ftle"]==True:
+        ftle_path = path.join(folder,'ftle_files')
+        if MPI.rank(MPI.comm_world) == 0:
+            if not path.exists(ftle_path):
+                makedirs(ftle_path)
+        ftle_ff = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_f_from_tstep{}.xdmf'.format(tstep))
+        ftle_ff.parameters["flush_output"] = True
+        ftle_fb = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_b_from_tstep{}.xdmf'.format(tstep))
+        ftle_fb.parameters["flush_output"] = True
+        ftle_fi = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_i_from_tstep{}.xdmf'.format(tstep))
+        ftle_fi.parameters["flush_output"] = True
+        ftle_lcs = XDMFFile(MPI.comm_world, folder + '/ftle_files/ftle_lcs_from_tstep{}.xdmf'.format(tstep))
+        ftle_lcs.parameters["flush_output"] = True
 
-    ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig = FTLE.setup_ftle(mesh, V, u_, NS_namespace['dt'])
-
+        ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig = FTLE.setup_ftle(mesh, V, u_, NS_namespace['dt'])
+    else:
+        ftle_path = None
+        ftle_ff = None
+        ftle_fb = None
+        ftle_fi = None
+        ftle_lcs = None
+        ftLe_backward = None 
+        ftLe_forward= None
+        ftLe_intersect = None 
+        grad_sig = None
+        
     return dict(hdf5_link=h5stdio,
                 files=files, #inout_area=NS_parameters['inout_area'],
                 final_time=NS_namespace['T'], current_cycle=0, 

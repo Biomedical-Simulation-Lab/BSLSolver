@@ -32,7 +32,7 @@ restart_no_given=-1
 for var in "$@"; do
   if [ "$var" == "force" ]; then force="Yes"; fi
   if [ "$var" == "clean" ]; then clean="Yes"; fi
-  #if you send an argument like "5" to the executable input file, it will interpret that as 5 restarts required
+  #if you send an argument like "5" to the executable input file, it will interpret that as restart #5
   if [ $var -eq $var 2> /dev/null ]; then restart_no_given=$var; fi
 done
 
@@ -67,7 +67,7 @@ echo "Finished naming"
 #set a variable that gives the number of saves per cycle
 uco=$(( $timesteps_per_cycle / $save_frequency))
 #acs is the total number of saves we are expecting to see, which includes all the cycles we wanted to print
-acs = $((($timesteps_per_cycle / $save_frequency)*($cycles-1)))
+acs=$(( ($timesteps_per_cycle / $save_frequency)*($cycles-1)))
 
 #check if we want to clean up old stuff
 if [ $clean == "Yes" ]; then
@@ -80,13 +80,14 @@ fi
 simdone="0"
 restart_no=0
 if [ $restart_no_given -lt 0 ]; then
+  echo "No restart number given!"
   # determines what the last checkpoint folder was if there was no provided number
   for l in \$(ls -1 \$results_folder/data/ 2>/dev/null); do if [[ \$l -gt \$restart_no ]]; then restart_no=\$l; fi; done
   #counts the number of saved tsteps already accounted for in the folder and saves as uc variable
   uc=\$(ls -1 \$results_folder/*_up.h5 2>/dev/null | wc -l)
   #checks to see if the number of saves (uc) is the same as the number of expected saves per cycle (uco). I changed this - AH.
   #OLD: if [ \$uco -eq \$uc ]; then
-  if [ \$acs == \$uc]; then 
+  if [ \$acs -eq \$uc]; then 
     simdone="1"
   fi
 else
@@ -109,7 +110,7 @@ echo "Results folder: " \$results_folder
 echo "Log File: " \$log_file
 echo "Restart Number: " \$(( \$restart_no+1 ))
 restart_folder=\${results_folder}/data/\${restart_no}/Checkpoint #this is not accurate for new oasis restart_folder=\$restart_folder
-#mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle period=$period cycles=$cycles save_frequency=$save_frequency mesh_name=$casename &>> \$log_file
+#mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle period=$period  cycles=$cycles save_frequency=$save_frequency mesh_name=$casename &>> \$log_file
 
 if [ \$simdone == "0" ]; then
   if [ \$restart_no -gt 0 ]; then
@@ -120,7 +121,7 @@ if [ \$simdone == "0" ]; then
       echo "restart_folder: " \$restart_folder
       echo \$(date) > \$log_file
       mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle period=$period cycles=$cycles save_frequency=$save_frequency \
-             mesh_name=$casename restart_folder=\$restart_folder &>> \$log_file
+             mesh_name=$casename restart_folder=\$restart_folder checkpoint=$checkpoint &>> \$log_file
     else
       echo "<!> Something went wrong! You should inspect what happened at Checkpoint#\${restart_no} in order to avoid an infinite loop at this point."
       echo "Here it is: \$restart_folder"
@@ -132,7 +133,7 @@ if [ \$simdone == "0" ]; then
     echo "Log file: " \$log_file
     echo \$(date) > \$log_file
     mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle period=$period cycles=$cycles save_frequency=$save_frequency \
-           mesh_name=$casename &>> \$log_file
+           mesh_name=$casename checkpoint=$checkpoint &>> \$log_file
   fi
   echo \$(date) >> \$log_file
   echo "hpclog/art_\${SLURM_JOB_NAME}_stdout_\${SLURM_JOB_ID}.txt" >> \$log_file
@@ -145,7 +146,8 @@ if [ -f \$log_file ]; then
   for l in \$(ls -1 \$results_folder/data/ 2>/dev/null); do if [[ \$l -gt \$m ]]; then m=\$l; fi; done; restart_no=\$m
   if [ -f \$results_folder/data/\$restart_no/incomplete ]; then
     echo "Resubmitting to resume CFD simulation: #" \$(( \$restart_no+1 ))
-    ssh nia-login03 "cd \$SLURM_SUBMIT_DIR; bash $0 \$restart_no"
+    run_name=(./${casename}.sh $restart_no)
+    ssh nia-login03 "cd \$SLURM_SUBMIT_DIR; "${run_name[@]}""
     exit
   fi
 fi
