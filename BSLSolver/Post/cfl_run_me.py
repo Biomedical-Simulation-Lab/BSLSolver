@@ -28,8 +28,8 @@ def get_cfl_job_cmd(input_folders, interval, ncores, detailed):
     for input_folder in input_folders:
         mesh_filename, case_folder, case_name = job_utils.get_case_mesh_filename(input_folder)
         period = job_utils.get_period(input_folder)
-        # cmdtxt += '  python $SOLVER_POST_HOME/compute_cfl.py %s %f %d %d %d > logs/cfl_%s.log\n'%(input_folder,period,interval,ncores,detailed,case_name)
-        cmdtxt += '  $SOLVER_POST_HOME/cflcalc %s %f %d %d %d > %s/logs/cfl_%s.log\n'%(input_folder,1000*period,interval,ncores,detailed,case_folder,case_name)
+        cmdtxt += '  python python $SCRATCH/PT_cases/Cases0810/Refinement/compute_cfl.py %s %f > logs/cfl_%s.log\n'%(input_folder,period,case_name)
+        #cmdtxt += '  $SOLVER_POST_HOME/cflcalc %s %f %d %d %d > %s/logs/cfl_%s.log\n'%(input_folder,1000*period,interval,ncores,detailed,case_folder,case_name)
     return cmdtxt
 
 if __name__ == '__main__':
