@@ -78,7 +78,7 @@ fi
 
 #now we need to check and see if we are restarting or running for the first time
 simdone="0"
-restart_no=0
+restart_no=0 #Note that after the first restart, the restart number will always be 1 because we are using Oasis and not Mehdi's io.py
 if [ $restart_no_given -lt 0 ]; then
   echo "No restart number given!"
   # determines what the last checkpoint folder was if there was no provided number
@@ -87,7 +87,7 @@ if [ $restart_no_given -lt 0 ]; then
   uc=\$(ls -1 \$results_folder/*_up.h5 2>/dev/null | wc -l)
   #checks to see if the number of saves (uc) is the same as the number of expected saves per cycle (uco). I changed this - AH.
   #OLD: if [ \$uco -eq \$uc ]; then
-  if [ \$acs -eq \$uc]; then 
+  if [ \$acs -eq \$uc ]; then 
     simdone="1"
   fi
 else
@@ -109,7 +109,7 @@ echo "Case Full Name: " \$casename_full
 echo "Results folder: " \$results_folder
 echo "Log File: " \$log_file
 echo "Restart Number: " \$(( \$restart_no+1 ))
-restart_folder=\${results_folder}/data/\${restart_no}/Checkpoint #this is not accurate for new oasis restart_folder=\$restart_folder
+#restart_folder=\${results_folder}/data/\${restart_no}/Checkpoint #this is not accurate for new oasis restart_folder=\$restart_folder
 #mpirun -n $num_cores oasis NSfracStep problem=Artery uOrder=$uOrder timesteps=$timesteps_per_cycle period=$period  cycles=$cycles save_frequency=$save_frequency mesh_name=$casename &>> \$log_file
 
 if [ \$simdone == "0" ]; then
@@ -142,13 +142,12 @@ fi
 
 # This will just run this shell script again
 if [ -f \$log_file ]; then
-  # find the last checkpoint folder
-  for l in \$(ls -1 \$results_folder/data/ 2>/dev/null); do if [[ \$l -gt \$m ]]; then m=\$l; fi; done; restart_no=\$m
   if [ -f \$results_folder/data/\$restart_no/incomplete ]; then
     echo "Resubmitting to resume CFD simulation: #" \$(( \$restart_no+1 ))
-    run_name=(./${casename}.sh $restart_no)
-    ssh nia-login03 "cd \$SLURM_SUBMIT_DIR; "${run_name[@]}""
-    exit
+    run_name=(${casename}.sh)
+    out=\$(ssh nia-login03 "cd \$SLURM_SUBMIT_DIR; bash "\${run_name[@]}"")
+    echo "\$out"
+    echo ""\${run_name[@]}" resubmitted"
   fi
 fi
 
