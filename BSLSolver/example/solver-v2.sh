@@ -151,21 +151,6 @@ if [ -f \$log_file ]; then
   fi
 fi
 
-# This is where the postprocessing script (wss hemodynamics) is run:
-if [ -f \$results_folder/data/\$restart_no/complete ]; then
-    # simulation is done
-    echo "Simulation is finished."
-    echo "Sleeping for 15 seconds to let the I/O settle down."
-    sleep 15
-    if [ ! -f \$results_folder/*_hemodynamics_w.tec ] || [ "$force" == "Yes" ]; then
-        echo "Submitting hemodynamic calculations job for:" $casename " stored at " \$results_folder
-        out=\$((ssh nia-login01 "cd \$SLURM_SUBMIT_DIR; python \$SOLVER_HOME/BSLSolver/Post/hemodynamic_indices_run_me.py \$results_folder -t $post_processing_time_minutes") 2>&1)
-        echo "\$out"
-    else
-        echo "Hemodynamics file were previously generated. Nothing to do!"
-    fi
-fi
-
 # This is where the postprocessing scripts (wss hemodynamics) is run:
 if [ -f \$results_folder/data/\$restart_no/complete ]; then
     # simulation is done
