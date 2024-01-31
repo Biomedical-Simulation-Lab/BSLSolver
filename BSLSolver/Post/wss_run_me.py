@@ -81,8 +81,8 @@ parallel -j %d <<EOF
         cmdtxt += '  $SOLVER_POST_HOME/wsscalc %g '%(mu) + mesh_filename+' '+ ' '.join(grp) + ' > %s/logs/wss_%s_%d.log \n'%(case_folder,mesh_name,i)
     cmdtxt += 'EOF'
 
-    os.remove(mesh_filename[:-3]+'_normals.mat')
-    os.remove(mesh_filename[:-3]+'_gradient.mat')
+    #os.remove(mesh_filename[:-3]+'_normals.mat')
+    #os.remove(mesh_filename[:-3]+'_gradient.mat')
 
     return cmdtxt
 
