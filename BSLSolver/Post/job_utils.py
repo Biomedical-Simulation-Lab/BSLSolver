@@ -44,7 +44,7 @@ def get_case_name(result_folder):
 # retrieve the case mesh filename using the naming convention and given results folder
 def get_case_mesh_filename(result_folder):
      cn = get_case_name(result_folder)
-     txt = result_folder[:result_folder.rfind("results/")]
+     txt = result_folder[:result_folder.rfind("results")]
      main_folder = txt if len(txt) > 0 else '.'
      return main_folder + '/data/'+cn+'.h5', main_folder, cn
 
