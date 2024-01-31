@@ -19,7 +19,7 @@ srcpath = inspect.getsourcefile(lambda:0)
 srcpath = srcpath[:srcpath.rfind('/')]
 sys.path.append(srcpath+'/../')
 sys.path.append("..")
-import naming
+import post_naming
 
 # retrive the case name using the naming convention
 def get_case_name(result_folder):
@@ -50,7 +50,7 @@ def get_case_mesh_filename(result_folder):
 
 # retrive the period by which the case was simulated in seconds NOT in miliseconds
 def get_period(result_folder):
-    return naming.get_period_from_info(get_case_name(result_folder)) / 1000.0
+    return post_naming.get_period_from_info(get_case_name(result_folder)) / 1000.0
 
 # provide a sulrm job script
 def get_job_script_header(job_name, req_time=15, nodes=1, run_on_debug=False):
