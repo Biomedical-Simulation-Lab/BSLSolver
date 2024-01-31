@@ -67,7 +67,7 @@ echo "Finished naming"
 #set a variable that gives the number of saves per cycle
 uco=$(( $timesteps_per_cycle / $save_frequency))
 #acs is the total number of saves we are expecting to see, which includes all the cycles we wanted to print
-acs=$(( ($timesteps_per_cycle / $save_frequency)*($cycles-1)))
+acs=$(( ($timesteps_per_cycle / $save_frequency)*($cycles-1) + 1))
 
 #check if we want to clean up old stuff
 if [ $clean == "Yes" ]; then
