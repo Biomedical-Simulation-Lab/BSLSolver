@@ -18,7 +18,8 @@ import inspect, sys, subprocess, time, os
 srcpath = inspect.getsourcefile(lambda:0)
 srcpath = srcpath[:srcpath.rfind('/')]
 sys.path.append(srcpath+'/../')
-import BSLSolver.naming
+sys.path.append("..")
+import naming
 
 # retrive the case name using the naming convention
 def get_case_name(result_folder):
