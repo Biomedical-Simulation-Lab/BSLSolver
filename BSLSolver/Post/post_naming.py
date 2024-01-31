@@ -110,4 +110,4 @@ def get_case_fullname(mesh_name, uo, cy, ts):
     return "art_" + mesh_name + txt
 
 #if __name__ == '__main__':
-print ( get_case_fullname(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4]) )
+#print ( get_case_fullname(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4]) )
