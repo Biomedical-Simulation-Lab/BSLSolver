@@ -1,0 +1,3 @@
+[console_scripts]
+bslsolver = BSLSolver.run_BSLSolver:main
+

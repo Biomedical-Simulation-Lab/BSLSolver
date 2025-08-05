@@ -48,55 +48,57 @@ def eigenstate(A, return_vector=False):
     else: 
         return val2
 
-def setup_ftle(mesh, V, u, dt):
+def setup_ftle(mesh, V, dxdX, dt): # u
     #get the trajectories
-    def C(u):
-        F = Identity(3) + grad(u)*dt
+    def C(dxdX):
+        F = Identity(3) + dxdX#grad(u)*dt
         return F.T*F
-    def C_b(u):
-        F = Identity(3) - grad(u)*dt
+    def C_b(dxdX):
+        F = Identity(3) - dxdX#grad(u)*dt
         return F.T*F
     #forward problem
-    C_ = C(u)
+    C_ = C(dxdX)
     vals = eigenstate(C_)
     #max_eig = project(vals,CG1)
     ftLe_forward = utilities.CG1Function(1/dt * ln(vals**(1/2)), mesh, method=_krylov_solver, name="ftLe_forward")
     #backward problem
-    Cb_ = C_b(u)
+    Cb_ = C_b(dxdX)
     vals_b = eigenstate(Cb_)
     #max_eig_b = project(vals_b,CG1)
     ftLe_backward = utilities.CG1Function(1/dt * ln(vals_b**(1/2)), mesh, method=_krylov_solver, name="ftLe_backward")
     ftLe_intersect = utilities.CG1Function(1/dt * (ln(vals**(1/2))-ln(vals_b**(1/2))), mesh, method=_krylov_solver, name="ftLe_intersect")
+    #this is for the lcs and s suspect
     #set up a library of gradients of sigma (backward)
-    grad_sig = {ui: utilities.GradFunction(ftLe_backward, FunctionSpace(mesh, 'CG', 1), i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
-    return ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig
+    #grad_sig = {ui: utilities.GradFunction(ftLe_backward, FunctionSpace(mesh, 'CG', 1), i=i, name='dsigd' + ('x', 'y', 'z')[i], method=_krylov_solver) for i, ui in enumerate(components)} #not vectorized yet
+    return ftLe_backward, ftLe_forward, ftLe_intersect#, grad_sig
 
-def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_ff, ftle_fb, ftle_fi, ftle_lcs, tstep):
+def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, mesh, ftle_ff, ftle_fb, ftle_fi, tstep):#, grad_sig, ftle_lcs
     t = Timer()
     ftLe_forward()
     ftLe_backward()
     ftLe_intersect()
     if MPI.rank(MPI.comm_world) == 0:
         print('Finished finding ftLe fields in %f s'%t.elapsed()[0])
-    grad_sig['0'](ftLe_backward)
-    grad_sig['1'](ftLe_backward)
-    grad_sig['2'](ftLe_backward)
-    parameters["form_compiler"]["quadrature_degree"]=4
+    #commented this stuff out because it is suspect...
+    #grad_sig['0'](ftLe_backward)
+    #grad_sig['1'](ftLe_backward)
+    #grad_sig['2'](ftLe_backward)
+    #parameters["form_compiler"]["quadrature_degree"]=4
     #get Hessian matrix of backward (attracting ftle)
-    _grad_sig  = as_vector([grad_sig[ui] for ui in components])
-    hess = grad(grad(ftLe_backward)) #
+    #_grad_sig  = as_vector([grad_sig[ui] for ui in components])
+    #hess = grad(grad(ftLe_backward)) #
     #rows and columns mixed up here but it is symmetric so that shouldn't matter (need to force symmetry?)
-    _hess = as_matrix([[hess[0,0], hess[0,1], hess[0,2]], [hess[0,1], hess[1,1], hess[1,2]], [hess[0,2], hess[1,2], hess[2,2]]])
+    #_hess = as_matrix([[hess[0,0], hess[0,1], hess[0,2]], [hess[0,1], hess[1,1], hess[1,2]], [hess[0,2], hess[1,2], hess[2,2]]])
     #get minimum eigenvector
-    e_min_DG0 = eigenstate(_hess, return_vector=True) #the Hessian should always have real eigenvalues for any real function such as the ftle field
-    e_min = {ui:utilities.CG1Function(e_min_DG0[i], mesh, method=_krylov_solver, name='e_min_'+ui) for i, ui in enumerate(components)} #project to CG1
-    e_min['0']()
-    e_min['1']()
-    e_min['2']()
-    _e_min = as_vector([e_min[ui] for ui in components])
+    #e_min_DG0 = eigenstate(_hess, return_vector=True) #the Hessian should always have real eigenvalues for any real function such as the ftle field
+    #e_min = {ui:utilities.CG1Function(e_min_DG0[i], mesh, method=_krylov_solver, name='e_min_'+ui) for i, ui in enumerate(components)} #project to CG1
+    #e_min['0']()
+    #e_min['1']()
+    #e_min['2']()
+    #_e_min = as_vector([e_min[ui] for ui in components])
     #get the minima
-    lcs = utilities.CG1Function(dot(_grad_sig, _e_min), mesh, method=_krylov_solver, name="lcs") #scalar-valued    
-    lcs()
+    #lcs = utilities.CG1Function(dot(_grad_sig, _e_min), mesh, method=_krylov_solver, name="lcs") #scalar-valued    
+    #lcs()
 
     if MPI.rank(MPI.comm_world) == 0:
         print('Finished finding total LCS in %f s'%t.elapsed()[0])
@@ -105,12 +107,12 @@ def get_ftle(ftLe_backward, ftLe_forward, ftLe_intersect, grad_sig, mesh, ftle_f
     ftle_ff.parameters.update({"rewrite_function_mesh": False})
     ftle_fb.parameters.update({"rewrite_function_mesh": False})
     ftle_fi.parameters.update({"rewrite_function_mesh": False})
-    ftle_lcs.parameters.update({"rewrite_function_mesh": False})
+    #ftle_lcs.parameters.update({"rewrite_function_mesh": False})
 
     ftle_ff.write(ftLe_forward, float(tstep))
     ftle_fb.write(ftLe_backward, float(tstep))
     ftle_fi.write(ftLe_intersect, float(tstep))
-    ftle_lcs.write(lcs, float(tstep))
+    #ftle_lcs.write(lcs, float(tstep))
 
 
 

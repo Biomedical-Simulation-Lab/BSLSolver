@@ -210,8 +210,7 @@ class WomersleyComponent1(UserExpression):
 
     def value_shape(self):
             return ()
-
-
+               
 def make_womersley_bcs(t, Q, mesh, nu, area, center, radius, normal,
                        v_degree, scale_to=None, coeffstype="Q",
                        N=1001, num_fourier_coefficients=21, **NS_namespace):

@@ -4,7 +4,7 @@ README for the new BSL Solver
 =========================================================================
 1) Anywhere you see [YOUR USERNAME HERE] just put your Niagara username with no brackets there.
 
-2) I am still debugging this code. It is not 100% functional
+2) Code should be functional for the PT case in the examples.
 
 # GETTING STARTED:
 =========================================================================
